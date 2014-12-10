@@ -164,6 +164,9 @@ struct sock_common {
 			__be32	skc_daddr;
 			__be32	skc_rcv_saddr;
 		};
+		int lane_info:1;
+		int lane_child:1;
+		uint32_t time_limit;
 	};
 	union  {
 		unsigned int	skc_hash;
@@ -207,6 +210,8 @@ struct sock_common {
 	/* private: */
 	int                     skc_dontcopy_end[0];
 	/* public: */
+	//int 					lane_info;
+
 };
 
 struct cg_proto;
@@ -232,6 +237,7 @@ struct cg_proto;
   *	@sk_napi_id: id of the last napi context to receive data for sk
   *	@sk_ll_usec: usecs to busypoll when there is no data
   *	@sk_allocation: allocation mode
+  *	@sk_pacing_rate: Pacing rate (if supported by transport/packet scheduler)
   *	@sk_sndbuf: size of send buffer in bytes
   *	@sk_flags: %SO_LINGER (l_onoff), %SO_BROADCAST, %SO_KEEPALIVE,
   *		   %SO_OOBINLINE settings, %SO_TIMESTAMPING settings
@@ -361,6 +367,7 @@ struct sock {
 	kmemcheck_bitfield_end(flags);
 	int			sk_wmem_queued;
 	gfp_t			sk_allocation;
+	u32			sk_pacing_rate; /* bytes per second */
 	netdev_features_t	sk_route_caps;
 	netdev_features_t	sk_route_nocaps;
 	int			sk_gso_type;
