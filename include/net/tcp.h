@@ -19,6 +19,14 @@
 #define _TCP_H
 
 #define FASTRETRANS_DEBUG 1
+#ifdef CONFIG_MPTCP
+
+#define INTERFACE_NUM 2
+#define ETH_LIST "16777482,16843274"
+#define LANE_INFO "0,1"
+#define CHILD_INFO "0,0"
+
+#endif
 
 #include <linux/list.h>
 #include <linux/tcp.h>
@@ -306,6 +314,7 @@ extern int sysctl_tcp_thin_dupack;
 extern int sysctl_tcp_early_retrans;
 extern int sysctl_tcp_limit_output_bytes;
 extern int sysctl_tcp_challenge_ack_limit;
+extern int sysctl_tcp_min_tso_segs;
 
 extern atomic_long_t tcp_memory_allocated;
 extern struct percpu_counter tcp_sockets_allocated;
