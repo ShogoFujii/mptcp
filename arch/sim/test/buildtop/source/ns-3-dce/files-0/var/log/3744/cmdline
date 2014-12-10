@@ -1,0 +1,1 @@
+ip route add default via 10.1.1.2 dev sim1 table 2 

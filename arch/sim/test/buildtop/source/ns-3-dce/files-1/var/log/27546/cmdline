@@ -1,0 +1,1 @@
+ip link set sim1 up arp off 
