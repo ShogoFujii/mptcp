@@ -39,13 +39,6 @@
 3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_select_ack_sock subsk is null, copied 0, cseq 1305929471
 3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_select_ack_sock pi 1 state 2 last_dseq 0
 3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_add_sock: token 0xa7beb92c pi 2, src_addr:0.0.0.0:0 dst_addr:0.0.0.0:0, cnt_subflows now 2
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ipv4.c: mptcp_init4_subsockets: token 0xa7beb92c pi 2 src_addr:10.1.1.1:0 dst_addr:10.2.0.1:5001
+3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ipv4.c: mptcp_init4_subsockets: token 0xa7beb92c pi 2 src_addr:10.1.1.1:0 dst_addr:10.2.1.1:5001
 3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_add_sock: token 0xa7beb92c pi 3, src_addr:0.0.0.0:0 dst_addr:0.0.0.0:0, cnt_subflows now 3
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ipv4.c: mptcp_init4_subsockets: token 0xa7beb92c pi 3 src_addr:10.1.0.1:0 dst_addr:10.2.1.1:5001
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_add_sock: token 0xa7beb92c pi 4, src_addr:0.0.0.0:0 dst_addr:0.0.0.0:0, cnt_subflows now 4
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ipv4.c: mptcp_init4_subsockets: token 0xa7beb92c pi 4 src_addr:10.1.1.1:0 dst_addr:10.2.1.1:5001
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_close: Close of meta_sk with tok 0xa7beb92c
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_del_sock: Removing subsock tok 0xa7beb92c pi:4 state 7 is_meta? 0
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_del_sock: Removing subsock tok 0xa7beb92c pi:2 state 7 is_meta? 0
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_del_sock: Removing subsock tok 0xa7beb92c pi:3 state 7 is_meta? 0
-3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ctrl.c: mptcp_del_sock: Removing subsock tok 0xa7beb92c pi:1 state 7 is_meta? 0
+3/home/shogofujii/git/mptcp_lane/mptcp/net/mptcp/mptcp_ipv4.c: mptcp_init4_subsockets: token 0xa7beb92c pi 3 src_addr:10.1.1.1:0 dst_addr:10.2.1.1:5001

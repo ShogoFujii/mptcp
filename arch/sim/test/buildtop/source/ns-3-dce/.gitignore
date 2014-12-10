@@ -4,6 +4,6 @@
 .waf*
 build/
 ns3waf/__init__.pyc
-files-*/*
+files-*/
 /pcap
 /xml

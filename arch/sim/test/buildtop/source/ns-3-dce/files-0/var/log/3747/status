@@ -1,3 +1,3 @@
-Start Time: NS3 Time:          5s (          +5000000000.0ns) , REAL Time: 1418193214
-      Time: NS3 Time:          5s (          +5000000000.0ns) , REAL Time: 1418193214 --> Starting: /home/shogofujii/git/mptcp_lane/mptcp/arch/sim/test/buildtop/build/bin/iperf
-      Time: NS3 Time:        106s (        +106180248642.0ns) , REAL Time: 1418193237 --> Exit (0)
+Start Time: NS3 Time:          5s (          +5000000000.0ns) , REAL Time: 1418200261
+      Time: NS3 Time:          5s (          +5000000000.0ns) , REAL Time: 1418200261 --> Starting: /home/shogofujii/git/mptcp_lane/mptcp/arch/sim/test/buildtop/build/bin/iperf
+      Time: NS3 Time:          7s (          +7000000000.0ns) , REAL Time: 1418200262 --> Never ended.

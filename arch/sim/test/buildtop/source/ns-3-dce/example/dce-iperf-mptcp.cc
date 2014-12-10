@@ -108,6 +108,11 @@ int main (int argc, char *argv[])
   // debug
   stack.SysctlSet (nodes, ".net.mptcp.mptcp_debug", "1");
 
+  stack.SysctlSet(nodes, ".net.ipv4.tcp_rmem", "5000000 5000000 5000000");
+  stack.SysctlSet(nodes, ".net.ipv4.tcp_wmem", "5000000 5000000 5000000");
+  stack.SysctlSet(nodes, ".net.core.rmem_max", "5000000");
+  stack.SysctlSet(nodes, ".net.core.wmem_max", "5000000");
+
   DceApplicationHelper dce;
   ApplicationContainer apps;
 
@@ -137,14 +142,15 @@ int main (int argc, char *argv[])
   dce.AddArgument ("1");
   apps = dce.Install (nodes.Get (1));
 
-  pointToPoint.EnablePcapAll ("iperf-mptcp", false);
+  pointToPoint.EnablePcapAll ("./pcap/iperf-mptcp/iperf-mptcp", false);
 
   apps.Start (Seconds (4));
 
   setPos (nodes.Get (0), 0, 20 * (nRtrs - 1) / 2, 0);
   setPos (nodes.Get (1), 100, 20 * (nRtrs - 1) / 2, 0);
 
-  Simulator::Stop (Seconds (200.0));
+  Simulator::Stop (Seconds (7.0));
+  AnimationInterface anim("./xml/dce-iperf-mptcp.xml");
   Simulator::Run ();
   Simulator::Destroy ();
 
