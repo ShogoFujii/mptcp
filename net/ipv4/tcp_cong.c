@@ -14,8 +14,13 @@
 #include <linux/list.h>
 #include <linux/gfp.h>
 #include <net/tcp.h>
+//#include <net/mptcp_pram.h>
+#include <string.h>
+//#include <stdlib.h>
 
 int sysctl_tcp_max_ssthresh = 0;
+
+int judge_cnt=0;
 
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
@@ -80,7 +85,56 @@ void tcp_init_congestion_control(struct sock *sk)
 {
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	struct tcp_congestion_ops *ca;
+	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
+	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
+	//printf("[judge]%d\n", judge_cnt);
+	strcpy(target, ETH_LIST);
+	strcpy(p_lane, LANE_INFO);
+	strcpy(p_child, CHILD_INFO);
 
+	if(judge_cnt == 0){
+		//printf ("[tcp_init]%s\n", target);
+		test=strtok(target, ",");		
+		while(test != NULL){
+			addr[i]=atoi(test);
+			//printf("test[%d]%d\n", i, addr[i]);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		//printf ("[tcp_init]%s\n", p_lane);
+		test=strtok(p_lane, ",");		
+		while(test != NULL){
+			lane[i]=atoi(test);
+			//printf("test[%d]%d\n", i, lane[i]);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		//printf ("[tcp_init]%s\n", p_child);
+		test=strtok(p_child, ",");		
+		while(test != NULL){
+			child[i]=atoi(test);
+			//printf("test[%d]%d\n", i, child[i]);
+			i++;
+			test=strtok(NULL, ",");
+		}
+	}
+	//printf("[debug]%d", sk->__sk_common.skc_daddr);
+	if(judge_cnt == 0){
+		for(i=0;i < INTERFACE_NUM;i++){
+			//printf("[test2]%d, %d, %d \n", addr[i], sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
+			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
+				//sk->__sk_common.lane_info = lane[i];
+				//sk->__sk_common.lane_child = child[i];
+				//sk->__sk_common.time_limit = 10;
+				printf("[check]lane_info:%d, lane_child:%d, time_limit:%d", sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				judge_cnt++;
+			}
+		}
+	}
 	/* if no choice made yet assign the current value set as default */
 	if (icsk->icsk_ca_ops == &tcp_init_congestion_ops) {
 		rcu_read_lock();
@@ -308,6 +362,8 @@ EXPORT_SYMBOL_GPL(tcp_is_cwnd_limited);
  */
 void tcp_slow_start(struct tcp_sock *tp)
 {
+	//printf("[slow_start]daddr:%d\n", tp->inet_conn->icsk_inet->sk->__sk_common->skc_daddr);
+	//printf("[slow_start]daddr:%d\n", tp->snd_cwnd);
 	int cnt; /* increase in packets */
 	unsigned int delta = 0;
 	u32 snd_cwnd = tp->snd_cwnd;
@@ -328,6 +384,8 @@ void tcp_slow_start(struct tcp_sock *tp)
 		delta++;
 	}
 	tp->snd_cwnd = min(snd_cwnd + delta, tp->snd_cwnd_clamp);
+	//tp->snd_cwnd = 1;
+	//printf("cwnd:%d\n", tp->snd_cwnd);
 }
 EXPORT_SYMBOL_GPL(tcp_slow_start);
 
@@ -354,7 +412,8 @@ EXPORT_SYMBOL_GPL(tcp_cong_avoid_ai);
 void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-
+	//printf("hitt:%d\n", test_cnt);
+	//test_cnt++
 	if (!tcp_is_cwnd_limited(sk, in_flight))
 		return;
 
