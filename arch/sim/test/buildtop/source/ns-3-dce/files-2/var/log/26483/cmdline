@@ -1,1 +1,0 @@
-ip link set sim0 up arp off 

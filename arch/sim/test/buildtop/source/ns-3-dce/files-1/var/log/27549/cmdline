@@ -1,1 +1,0 @@
-ip route add default via 10.2.0.2 dev sim0 table 1 
