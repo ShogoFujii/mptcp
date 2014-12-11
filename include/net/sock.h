@@ -164,9 +164,6 @@ struct sock_common {
 			__be32	skc_daddr;
 			__be32	skc_rcv_saddr;
 		};
-		int lane_info:1;
-		int lane_child:1;
-		uint32_t time_limit;
 	};
 	union  {
 		unsigned int	skc_hash;
@@ -186,6 +183,9 @@ struct sock_common {
 	unsigned char		skc_reuse:4;
 	unsigned char		skc_reuseport:4;
 	int			skc_bound_dev_if;
+	int lane_info;
+	int lane_child;
+	uint32_t time_limit;
 	union {
 		struct hlist_node	skc_bind_node;
 		struct hlist_nulls_node skc_portaddr_node;

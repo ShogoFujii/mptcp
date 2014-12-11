@@ -25,6 +25,7 @@
 #define ETH_LIST "16777482,16843274"
 #define LANE_INFO "0,1"
 #define CHILD_INFO "0,0"
+#define LANE_THRESH 300
 
 #endif
 

@@ -2790,7 +2790,10 @@ static void tcp_fastretrans_alert(struct sock *sk, const int acked,
 
 void tcp_valid_rtt_meas(struct sock *sk, u32 seq_rtt)
 {
+	struct tcp_sock *tp = tcp_sk(sk);
+	//printf("[srtt]:%d", tp->srtt);
 	tcp_rtt_estimator(sk, seq_rtt);
+	//printf("[after]:%d\n", tp->srtt);
 	tcp_set_rto(sk);
 	inet_csk(sk)->icsk_backoff = 0;
 }
@@ -2817,6 +2820,7 @@ static void tcp_ack_saw_tstamp(struct sock *sk, int flag)
 	 * in window is lost... Voila.	 			--ANK (010210)
 	 */
 	struct tcp_sock *tp = tcp_sk(sk);
+	//printf("ts:%d, rcv_tsecr:%d\n", tcp_time_stamp, tp->rx_opt.rcv_tsecr);
 
 	tcp_valid_rtt_meas(sk, tcp_time_stamp - tp->rx_opt.rcv_tsecr);
 }

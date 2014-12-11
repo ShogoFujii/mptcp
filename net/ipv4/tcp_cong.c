@@ -14,9 +14,7 @@
 #include <linux/list.h>
 #include <linux/gfp.h>
 #include <net/tcp.h>
-//#include <net/mptcp_pram.h>
 #include <string.h>
-//#include <stdlib.h>
 
 int sysctl_tcp_max_ssthresh = 0;
 
@@ -85,6 +83,7 @@ void tcp_init_congestion_control(struct sock *sk)
 {
 	struct inet_connection_sock *icsk = inet_csk(sk);
 	struct tcp_congestion_ops *ca;
+	struct sock_common *sk_c;
 	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
 	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
 	//printf("[judge]%d\n", judge_cnt);
@@ -92,7 +91,7 @@ void tcp_init_congestion_control(struct sock *sk)
 	strcpy(p_lane, LANE_INFO);
 	strcpy(p_child, CHILD_INFO);
 
-	if(judge_cnt == 0){
+	if(judge_cnt < INTERFACE_NUM){
 		//printf ("[tcp_init]%s\n", target);
 		test=strtok(target, ",");		
 		while(test != NULL){
@@ -107,7 +106,7 @@ void tcp_init_congestion_control(struct sock *sk)
 		test=strtok(p_lane, ",");		
 		while(test != NULL){
 			lane[i]=atoi(test);
-			//printf("test[%d]%d\n", i, lane[i]);
+			//printf("lane[%d]%d\n", i, lane[i]);
 			i++;
 			test=strtok(NULL, ",");
 		}
@@ -122,15 +121,16 @@ void tcp_init_congestion_control(struct sock *sk)
 			test=strtok(NULL, ",");
 		}
 	}
-	//printf("[debug]%d", sk->__sk_common.skc_daddr);
-	if(judge_cnt == 0){
+	//printf("[debug]%d\n", sk->__sk_common.skc_daddr);
+	if(judge_cnt < INTERFACE_NUM){
 		for(i=0;i < INTERFACE_NUM;i++){
 			//printf("[test2]%d, %d, %d \n", addr[i], sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
-				//sk->__sk_common.lane_info = lane[i];
-				//sk->__sk_common.lane_child = child[i];
-				//sk->__sk_common.time_limit = 10;
-				printf("[check]lane_info:%d, lane_child:%d, time_limit:%d", sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				sk->__sk_common.lane_info = lane[i];
+				sk->__sk_common.lane_child = child[i];
+				(lane[i]==0)? (sk->__sk_common.time_limit = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH) : (sk->__sk_common.time_limit = 0);
+				printf("[check_i:%d]addr:%d, lane_info:%d, lane_child:%d, time_limit:%d\n", i, addr[i], sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				//printf("now:%d\n", get_seconds());
 				judge_cnt++;
 			}
 		}
@@ -362,11 +362,11 @@ EXPORT_SYMBOL_GPL(tcp_is_cwnd_limited);
  */
 void tcp_slow_start(struct tcp_sock *tp)
 {
-	//printf("[slow_start]daddr:%d\n", tp->inet_conn->icsk_inet->sk->__sk_common->skc_daddr);
-	//printf("[slow_start]daddr:%d\n", tp->snd_cwnd);
 	int cnt; /* increase in packets */
 	unsigned int delta = 0;
 	u32 snd_cwnd = tp->snd_cwnd;
+	//printf("now:%d\n",jiffies_to_msecs(tcp_time_stamp)>>3);
+	printf("now:%d\n", jiffies_to_msecs(get_jiffies_64()));
 
 	if (unlikely(!snd_cwnd)) {
 		pr_err_once("snd_cwnd is nul, please report this bug.\n");
