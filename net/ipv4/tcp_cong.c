@@ -18,7 +18,7 @@
 
 int sysctl_tcp_max_ssthresh = 0;
 
-int judge_cnt=0;
+int judge_cnt=0, thresh=-1;
 
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
@@ -128,7 +128,10 @@ void tcp_init_congestion_control(struct sock *sk)
 			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
 				sk->__sk_common.lane_info = lane[i];
 				sk->__sk_common.lane_child = child[i];
-				(lane[i]==0)? (sk->__sk_common.time_limit = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH) : (sk->__sk_common.time_limit = 0);
+				if(thresh<0)
+					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
+				//(lane[i]==0)? (sk->__sk_common.time_limit = thresh) : (sk->__sk_common.time_limit = 0);
+				sk->__sk_common.time_limit = thresh;
 				printf("[check_i:%d]addr:%d, lane_info:%d, lane_child:%d, time_limit:%d\n", i, addr[i], sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
 				//printf("now:%d\n", get_seconds());
 				judge_cnt++;
