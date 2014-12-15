@@ -51,6 +51,7 @@ static inline void mptcp_become_fully_estab(struct sock *sk)
 	if (is_master_tp(tcp_sk(sk)) &&
 	    tcp_sk(sk)->mpcb->pm_ops->fully_established)
 		tcp_sk(sk)->mpcb->pm_ops->fully_established(mptcp_meta_sk(sk));
+		//printf("mptcp_become_fully_estab\n");
 }
 
 /* Similar to tcp_tso_acked without any memory accounting */
@@ -2123,7 +2124,7 @@ int mptcp_rcv_synsent_state_process(struct sock *sk, struct sock **skptr,
 
 	if (tp->mpc)
 		tp->mptcp->rcv_isn = TCP_SKB_CB(skb)->seq;
-
+	printf("everything is fine\n");
 	return 0;
 }
 

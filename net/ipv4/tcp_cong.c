@@ -14,11 +14,11 @@
 #include <linux/list.h>
 #include <linux/gfp.h>
 #include <net/tcp.h>
-#include <string.h>
+//#include <string.h>
 
-int sysctl_tcp_max_ssthresh = 0;
+//int sysctl_tcp_max_ssthresh = 0;
 
-int judge_cnt=0, thresh=-1;
+//int judge_cnt=0, thresh=-1;
 
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
@@ -77,13 +77,10 @@ void tcp_unregister_congestion_control(struct tcp_congestion_ops *ca)
 	spin_unlock(&tcp_cong_list_lock);
 }
 EXPORT_SYMBOL_GPL(tcp_unregister_congestion_control);
-
-/* Assign choice of congestion control. */
-void tcp_init_congestion_control(struct sock *sk)
+/*
+void tcp_init_lane_set(struct sock *sk)
 {
-	struct inet_connection_sock *icsk = inet_csk(sk);
-	struct tcp_congestion_ops *ca;
-	struct sock_common *sk_c;
+
 	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
 	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
 	//printf("[judge]%d\n", judge_cnt);
@@ -92,52 +89,55 @@ void tcp_init_congestion_control(struct sock *sk)
 	strcpy(p_child, CHILD_INFO);
 
 	if(judge_cnt < INTERFACE_NUM){
-		//printf ("[tcp_init]%s\n", target);
 		test=strtok(target, ",");		
 		while(test != NULL){
 			addr[i]=atoi(test);
-			//printf("test[%d]%d\n", i, addr[i]);
 			i++;
 			test=strtok(NULL, ",");
 		}
 		test="";
 		i=0;
-		//printf ("[tcp_init]%s\n", p_lane);
 		test=strtok(p_lane, ",");		
 		while(test != NULL){
 			lane[i]=atoi(test);
-			//printf("lane[%d]%d\n", i, lane[i]);
 			i++;
 			test=strtok(NULL, ",");
 		}
 		test="";
 		i=0;
-		//printf ("[tcp_init]%s\n", p_child);
 		test=strtok(p_child, ",");		
 		while(test != NULL){
 			child[i]=atoi(test);
-			//printf("test[%d]%d\n", i, child[i]);
 			i++;
 			test=strtok(NULL, ",");
 		}
 	}
-	//printf("[debug]%d\n", sk->__sk_common.skc_daddr);
 	if(judge_cnt < INTERFACE_NUM){
 		for(i=0;i < INTERFACE_NUM;i++){
-			//printf("[test2]%d, %d, %d \n", addr[i], sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
 				sk->__sk_common.lane_info = lane[i];
 				sk->__sk_common.lane_child = child[i];
 				if(thresh<0)
 					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
-				//(lane[i]==0)? (sk->__sk_common.time_limit = thresh) : (sk->__sk_common.time_limit = 0);
 				sk->__sk_common.time_limit = thresh;
 				printf("[check_i:%d]addr:%d, lane_info:%d, lane_child:%d, time_limit:%d\n", i, addr[i], sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
-				//printf("now:%d\n", get_seconds());
 				judge_cnt++;
 			}
 		}
 	}
+}
+*/
+
+/* Assign choice of congestion control. */
+void tcp_init_congestion_control(struct sock *sk)
+{
+	struct inet_connection_sock *icsk = inet_csk(sk);
+	struct tcp_congestion_ops *ca;
+	struct sock_common *sk_c;
+
+	/* proposal mptcp_lane*/
+	//tcp_init_lane_set(sk);
+
 	/* if no choice made yet assign the current value set as default */
 	if (icsk->icsk_ca_ops == &tcp_init_congestion_ops) {
 		rcu_read_lock();
@@ -368,8 +368,9 @@ void tcp_slow_start(struct tcp_sock *tp)
 	int cnt; /* increase in packets */
 	unsigned int delta = 0;
 	u32 snd_cwnd = tp->snd_cwnd;
+	//printf("slow_start:%d, lane:%d\n", tp->inet_conn.icsk_inet.sk.__sk_common.skc_daddr, tp->inet_conn.icsk_inet.sk.__sk_common.lane_info);
 	//printf("now:%d\n",jiffies_to_msecs(tcp_time_stamp)>>3);
-	printf("now:%d\n", jiffies_to_msecs(get_jiffies_64()));
+	//printf("now:%d\n", jiffies_to_msecs(get_jiffies_64()));
 
 	if (unlikely(!snd_cwnd)) {
 		pr_err_once("snd_cwnd is nul, please report this bug.\n");
@@ -387,6 +388,16 @@ void tcp_slow_start(struct tcp_sock *tp)
 		delta++;
 	}
 	tp->snd_cwnd = min(snd_cwnd + delta, tp->snd_cwnd_clamp);
+	/*
+	if(tp->inet_conn.icsk_inet.sk.__sk_common.skc_daddr == 16843274){
+		printf("lane_info:%d", tp->inet_conn.icsk_inet.sk.__sk_common.skc_daddr);
+		//tp->snd_cwnd = 0;
+		//printf("cwnd_long:%d\n", tp->snd_cwnd);
+	}else{
+		//tp->snd_cwnd = 0;
+		//printf("cwnd_short:%d\n", tp->snd_cwnd);
+	}*/
+
 	//tp->snd_cwnd = 1;
 	//printf("cwnd:%d\n", tp->snd_cwnd);
 }

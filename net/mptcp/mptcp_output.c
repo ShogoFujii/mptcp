@@ -1078,6 +1078,7 @@ retrans:
 int mptcp_write_xmit(struct sock *meta_sk, unsigned int mss_now, int nonagle,
 		     int push_one, gfp_t gfp)
 {
+	//printf("mptcp?::%d\n", meta_sk->__sk_common.skc_daddr);
 	struct tcp_sock *meta_tp = tcp_sk(meta_sk), *subtp;
 	struct sock *subsk;
 	struct mptcp_cb *mpcb = meta_tp->mpcb;

@@ -438,6 +438,7 @@ EXPORT_SYMBOL(tcp_initialize_rcv_mss);
  */
 static void tcp_rcv_rtt_update(struct tcp_sock *tp, u32 sample, int win_dep)
 {
+	//printf("tcp_rcv_rtt_update:\n");
 	u32 new_sample = tp->rcv_rtt_est.rtt;
 	long m = sample;
 
@@ -5827,6 +5828,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
 		 * subtype.
 		 */
 		if (tp->mpc && !is_master_tp(tp))
+			printf("mptcp's ack?\n");
 			tcp_send_ack(sk);
 		break;
 

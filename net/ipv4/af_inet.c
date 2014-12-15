@@ -670,6 +670,7 @@ int __inet_stream_connect(struct socket *sock, struct sockaddr *uaddr,
 	 */
 
 	sock->state = SS_CONNECTED;
+	//printf("connected!\n");
 	err = 0;
 out:
 	return err;
@@ -691,6 +692,7 @@ int inet_stream_connect(struct socket *sock, struct sockaddr *uaddr,
 	lock_sock(sock->sk);
 	err = __inet_stream_connect(sock, uaddr, addr_len, flags);
 	release_sock(sock->sk);
+	//printf("[inet]addr:%d, state:%d\n", sock->sk->__sk_common.skc_daddr, sock->sk->__sk_common.skc_state);
 	return err;
 }
 EXPORT_SYMBOL(inet_stream_connect);

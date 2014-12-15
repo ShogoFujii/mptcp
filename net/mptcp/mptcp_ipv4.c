@@ -41,6 +41,11 @@
 #include <net/request_sock.h>
 #include <net/tcp.h>
 
+#include <string.h>
+
+int sysctl_tcp_max_ssthresh = 0;
+int judge_cnt=0, thresh=-1;
+
 u32 mptcp_v4_get_nonce(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport,
 		       u32 seq)
 {
@@ -118,6 +123,11 @@ static void mptcp_v4_join_request(struct sock *meta_sk, struct sk_buff *skb)
 	__be32 saddr = ip_hdr(skb)->saddr;
 	__be32 daddr = ip_hdr(skb)->daddr;
 	__u32 isn = TCP_SKB_CB(skb)->when;
+	printf("[mptcp_ipv4_joinrequest]saddr:%d\n", ip_hdr(skb)->saddr);
+	printf("[mptcp_ipv4_joinrequest]daddr:%d\n", daddr);
+	//printf("[mptcp_ipv4]mpcb->cnt_established%d\n",mpcb->cnt_established);
+	//printf("[tcp_ipv4]isn:%d\n", isn);
+	//printf("[tcp_ipv4]rem_key:%d\n\n", mtreq->mptcp_rem_key);
 	int want_cookie = 0;
 	union inet_addr addr;
 
@@ -192,6 +202,7 @@ static void mptcp_v4_join_request(struct sock *meta_sk, struct sk_buff *skb)
 	}
 	tcp_rsk(req)->snt_isn = isn;
 	tcp_rsk(req)->snt_synack = tcp_time_stamp;
+	tcp_rsk(req)->listener = NULL;
 
 	mtreq = mptcp_rsk(req);
 	mtreq->mpcb = mpcb;
@@ -199,6 +210,8 @@ static void mptcp_v4_join_request(struct sock *meta_sk, struct sk_buff *skb)
 	mtreq->mptcp_rem_nonce = mopt.mptcp_recv_nonce;
 	mtreq->mptcp_rem_key = mpcb->mptcp_rem_key;
 	mtreq->mptcp_loc_key = mpcb->mptcp_loc_key;
+	//printf("[mptcp_ipv4]rem_key:%d\n", mpcb->mptcp_rem_key);
+	//printf("[mptcp_ipv4]loc_key:%d\n\n", mpcb->mptcp_loc_key);
 	mtreq->mptcp_loc_nonce = mptcp_v4_get_nonce(saddr, daddr,
 						    tcp_hdr(skb)->source,
 						    tcp_hdr(skb)->dest, isn);
@@ -257,9 +270,14 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 {
 	int i;
 	struct mptcp_rem4 *rem4;
-
+	
 	mptcp_for_each_bit_set(mpcb->rem4_bits, i) {
+		//i = 0;
 		rem4 = &mpcb->remaddr4[i];
+		//printf("[mptcp_ipv4]i:%d\n", i);
+		//printf("[mptcp_ipv4]rem4->id:%d, id:%d\n", rem4->id, id);
+		//printf("[mptcp_ipv4]rem4->s_addr:%d, addr->s_addr:%d\n", rem4->addr.s_addr, addr->s_addr);
+		//printf("[mptcp_ipv4]rem4->port:%d, port:%d\n", rem4->port, port);
 
 		/* Address is already in the list --- continue */
 		if (rem4->id == id &&
@@ -285,6 +303,7 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	}
 
 	i = mptcp_find_free_index(mpcb->rem4_bits);
+	//printf("[mptcp_ipv4]i:%d\n", i);
 	/* Do we have already the maximum number of local/remote addresses? */
 	if (i < 0) {
 		mptcp_debug("%s: At max num of remote addresses: %d --- not adding address: %pI4\n",
@@ -295,6 +314,7 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	rem4 = &mpcb->remaddr4[i];
 
 	/* Address is not known yet, store it */
+	printf("[mptcp_ipv4][%d]new_adress_stored:%d\n", id, addr->s_addr);
 	rem4->addr.s_addr = addr->s_addr;
 	rem4->port = port;
 	rem4->bitfield = 0;
@@ -303,9 +323,59 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	mpcb->list_rcvd = 1;
 	mpcb->rem4_bits |= (1 << i);
 
+	//printf("[mptcp_ipv4][2]rem4->id:%d, id:%d\n", rem4->id, id);
+	//printf("[mptcp_ipv4][2]rem4->s_addr:%d, addr->s_addr:%d\n", rem4->addr.s_addr, addr->s_addr);
+	//printf("[mptcp_ipv4][2]rem4->port:%d, port:%d\n", rem4->port, port);
 	return 0;
 }
 
+void mptcp_init_lane_set(struct sock *sk)
+{
+	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
+	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
+	//printf("[judge]%d\n", judge_cnt);
+	strcpy(target, ETH_LIST);
+	strcpy(p_lane, LANE_INFO);
+	strcpy(p_child, CHILD_INFO);
+
+	if(judge_cnt < INTERFACE_NUM){
+		test=strtok(target, ",");		
+		while(test != NULL){
+			addr[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_lane, ",");		
+		while(test != NULL){
+			lane[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_child, ",");		
+		while(test != NULL){
+			child[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+	}
+	if(judge_cnt < INTERFACE_NUM){
+		for(i=0;i < INTERFACE_NUM;i++){
+			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
+				sk->__sk_common.lane_info = lane[i];
+				sk->__sk_common.lane_child = child[i];
+				if(thresh<0)
+					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
+				sk->__sk_common.time_limit = thresh;
+				printf("[check_i:%d]addr:%d, lane_info:%d, lane_child:%d, time_limit:%d\n", i, addr[i], sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				judge_cnt++;
+			}
+		}
+	}
+}
 /* Sets the bitfield of the remote-address field
  * local address is not set as it will disappear with the global address-list
  */
@@ -459,6 +529,7 @@ struct sock *mptcp_v4_search_req(const __be16 rport, const __be32 raddr,
 int mptcp_init4_subsockets(struct sock *meta_sk, const struct mptcp_loc4 *loc,
 			   struct mptcp_rem4 *rem)
 {
+	printf("mptcp_init4_subsockets\n");
 	struct tcp_sock *tp;
 	struct sock *sk;
 	struct sockaddr_in loc_in, rem_in;
@@ -501,6 +572,7 @@ int mptcp_init4_subsockets(struct sock *meta_sk, const struct mptcp_loc4 *loc,
 	/** Then, connect the socket to the peer */
 
 	ulid_size = sizeof(struct sockaddr_in);
+	//printf("[tcp_ipv4]ulid_size:%d\n", ulid_size);
 	loc_in.sin_family = AF_INET;
 	rem_in.sin_family = AF_INET;
 	loc_in.sin_port = 0;
@@ -510,6 +582,8 @@ int mptcp_init4_subsockets(struct sock *meta_sk, const struct mptcp_loc4 *loc,
 		rem_in.sin_port = inet_sk(meta_sk)->inet_dport;
 	loc_in.sin_addr = loc->addr;
 	rem_in.sin_addr = rem->addr;
+	//printf("[tcp_ipv4]rem:%d,id:%d,port:%d\n", rem_in.sin_addr.s_addr,rem->id,rem->port);
+	//printf("[tcp_ipv4]loc:%d,id:%d\n\n", loc_in.sin_addr.s_addr, loc->id);
 
 	ret = sock.ops->bind(&sock, (struct sockaddr *)&loc_in, ulid_size);
 	if (ret < 0) {
@@ -539,6 +613,7 @@ int mptcp_init4_subsockets(struct sock *meta_sk, const struct mptcp_loc4 *loc,
 
 error:
 	/* May happen if mptcp_add_sock fails first */
+	printf("error!\n");
 	if (!tp->mpc) {
 		tcp_close(sk, 0);
 	} else {

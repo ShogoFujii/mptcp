@@ -1293,6 +1293,7 @@ void mptcp_del_sock(struct sock *sk)
  */
 void mptcp_update_metasocket(struct sock *sk, struct sock *meta_sk)
 {
+	//printf("mptcp_update_metasocket\n");
 	struct mptcp_cb *mpcb = tcp_sk(meta_sk)->mpcb;
 	union inet_addr addr;
 	u8 id;

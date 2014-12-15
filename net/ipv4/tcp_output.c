@@ -876,6 +876,12 @@ void tcp_wfree(struct sk_buff *skb)
 int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 		        gfp_t gfp_mask)
 {
+	//printf("cwnd_transmit:%d\n", tcp_sk(sk)->snd_cwnd);
+	//printf("daddr:%d\n", sk->__sk_common.skc_daddr);
+	if (sk->__sk_common.skc_daddr == 16843018 || sk->__sk_common.skc_daddr == 16843274){
+		tcp_sk(sk)->snd_cwnd = 10;
+	}
+	//tcp_sk(sk)->snd_cwnd = 0;
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	struct inet_sock *inet;
 	struct tcp_sock *tp;
@@ -1921,6 +1927,7 @@ static bool tcp_write_xmit(struct sock *sk, unsigned int mss_now, int nonagle,
 	int cwnd_quota;
 	int result;
 
+	//printf("mptcp?::%d, %d\n", sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 	if (is_meta_sk(sk))
 		return mptcp_write_xmit(sk, mss_now, nonagle, push_one, gfp);
 
@@ -3075,6 +3082,8 @@ int tcp_connect(struct sock *sk)
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct sk_buff *buff;
 	int err;
+	//printf("cwnd_init:%d\n", tcp_sk(sk)->snd_cwnd);
+
 
 	tcp_connect_init(sk);
 
@@ -3094,6 +3103,8 @@ int tcp_connect(struct sock *sk)
 	tp->retrans_stamp = TCP_SKB_CB(buff)->when = tcp_time_stamp;
 	tcp_connect_queue_skb(sk, buff);
 	TCP_ECN_send_syn(sk, buff);
+	//tcp_sk(sk)->snd_cwnd = 0;
+	//printf("cwnd_init:%d\n", tcp_sk(sk)->snd_cwnd);
 
 	/* Send off SYN; include data in Fast Open. */
 	err = tp->fastopen_req ? tcp_send_syn_data(sk, buff) :
