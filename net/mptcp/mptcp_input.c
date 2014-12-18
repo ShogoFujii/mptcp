@@ -2124,7 +2124,7 @@ int mptcp_rcv_synsent_state_process(struct sock *sk, struct sock **skptr,
 
 	if (tp->mpc)
 		tp->mptcp->rcv_isn = TCP_SKB_CB(skb)->seq;
-	printf("everything is fine\n");
+	//printf("everything is fine\n");
 	return 0;
 }
 

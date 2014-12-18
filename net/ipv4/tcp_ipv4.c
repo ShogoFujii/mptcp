@@ -874,7 +874,7 @@ int tcp_v4_send_synack(struct sock *sk, struct dst_entry *dst,
 		__tcp_v4_send_check(skb, ireq->loc_addr, ireq->rmt_addr);
 
 		skb_set_queue_mapping(skb, queue_mapping);
-		printf("[tcp_ipv4]req_addr:%d, %d\n", ireq->loc_addr, ireq->rmt_addr);
+		//printf("[tcp_ipv4]req_addr:%d, %d\n", ireq->loc_addr, ireq->rmt_addr);
 		err = ip_build_and_send_pkt(skb, sk, ireq->loc_addr,
 					    ireq->rmt_addr,
 					    ireq->opt);
@@ -882,7 +882,8 @@ int tcp_v4_send_synack(struct sock *sk, struct dst_entry *dst,
 		if (!tcp_rsk(req)->snt_synack && !err)
 			tcp_rsk(req)->snt_synack = tcp_time_stamp;
 	}
-
+	printf("send_synack");
+	printf("[tcp_ipv4]req_addr:%d, %d\n", ireq->loc_addr, ireq->rmt_addr);
 	return err;
 }
 

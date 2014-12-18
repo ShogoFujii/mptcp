@@ -56,7 +56,7 @@
 #include <linux/workqueue.h>
 #include <linux/atomic.h>
 #include <linux/sysctl.h>
-
+#include <string.h>
 static struct kmem_cache *mptcp_sock_cache __read_mostly;
 static struct kmem_cache *mptcp_cb_cache __read_mostly;
 static struct kmem_cache *mptcp_tw_cache __read_mostly;
@@ -66,6 +66,7 @@ int sysctl_mptcp_checksum __read_mostly = 1;
 int sysctl_mptcp_debug __read_mostly;
 EXPORT_SYMBOL(sysctl_mptcp_debug);
 int sysctl_mptcp_syn_retries __read_mostly = 3;
+int cnt2=0, thresh=-1;
 
 bool mptcp_init_failed __read_mostly;
 
@@ -1286,6 +1287,57 @@ void mptcp_del_sock(struct sock *sk)
 	rcu_assign_pointer(inet_sk(sk)->inet_opt, NULL);
 }
 
+void mptcp_init_limit_set(struct sock *sk)
+{
+	printf("mptcp_init_limit_set\n");
+	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
+	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
+	//printf("[judge]%d\n", judge_cnt);
+	strcpy(target, ETH_LIST);
+	strcpy(p_lane, LANE_INFO);
+	strcpy(p_child, CHILD_INFO);
+
+	if(cnt2 < INTERFACE_NUM){
+		test=strtok(target, ",");
+		while(test != NULL){
+			addr[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_lane, ",");		
+		while(test != NULL){
+			lane[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_child, ",");		
+		while(test != NULL){
+			child[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+	}
+	if(cnt2 < INTERFACE_NUM){
+		for(i=0;i < INTERFACE_NUM;i++){
+			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){	
+				sk->__sk_common.lane_info = lane[i];
+				sk->__sk_common.lane_child = child[i];
+				if(sk->__sk_common.time_limit == 0){
+					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
+					sk->__sk_common.time_limit = thresh;
+				}
+				printf("[sk_check_i:%d]addr:%d, lane_info:%d, lane_child:%d, limit:%d\n", i, sk->__sk_common.skc_daddr, sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				cnt2++;
+			}
+		}
+	}
+}
+
+
 /* Updates the metasocket ULID/port data, based on the given sock.
  * The argument sock must be the sock accessible to the application.
  * In this function, we update the meta socket info, based on the changes
@@ -1311,6 +1363,8 @@ void mptcp_update_metasocket(struct sock *sk, struct sock *meta_sk)
 		mptcp_v4_add_raddress(mpcb,
 				      (struct in_addr *)&inet_sk(sk)->inet_daddr,
 				      0, 0);
+		mptcp_init_limit_set(sk);
+		mptcp_init_limit_set(meta_sk);
 		mptcp_v4_set_init_addr_bit(mpcb, inet_sk(sk)->inet_daddr, id);
 	} else {
 #if IS_ENABLED(CONFIG_IPV6)

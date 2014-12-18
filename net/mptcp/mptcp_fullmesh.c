@@ -3,10 +3,14 @@
 #include <net/mptcp.h>
 #include <net/mptcp_v4.h>
 
+#include <string.h>
+
 #if IS_ENABLED(CONFIG_IPV6)
 #include <net/mptcp_v6.h>
 #include <net/addrconf.h>
 #endif
+
+int judge_cnt=0;
 
 enum {
 	MPTCP_EVENT_ADD = 1,
@@ -138,6 +142,53 @@ exit:
 	sock_put(meta_sk);
 }
 
+void mptcp_init_lane_set(struct mptcp_loc4 *locaddr4, int num )
+{
+	//printf("mptcp_init_lane_set:%d, cnt:%d\n", locaddr4[num].addr.s_addr, judge_cnt);
+	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
+	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
+	//printf("[judge]%d\n", judge_cnt);
+	strcpy(target, ETH_LIST);
+	strcpy(p_lane, LANE_INFO);
+	strcpy(p_child, CHILD_INFO);
+
+	if(judge_cnt < INTERFACE_NUM){
+		test=strtok(target, ",");		
+		while(test != NULL){
+			addr[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_lane, ",");		
+		while(test != NULL){
+			lane[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_child, ",");		
+		while(test != NULL){
+			child[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+	}
+	
+	if(judge_cnt < INTERFACE_NUM){
+		for(i=0;i < INTERFACE_NUM;i++){
+			if(locaddr4[num].addr.s_addr== addr[i]){
+				locaddr4[num].lane_info = lane[i];
+				locaddr4[num].lane_child = child[i];
+				printf("[check_i:%d]addr:%d, lane_info:%d, lane_child:%d\n", i, locaddr4[num].addr.s_addr, locaddr4[num].lane_info, locaddr4[num].lane_child);
+				judge_cnt++;
+			}
+		}
+	}
+}
+
 /**
  * Create all new subflows, by doing calls to mptcp_initX_subsockets
  *
@@ -147,17 +198,16 @@ exit:
  **/
 static void create_subflow_worker(struct work_struct *work)
 {
-	printf("create_subflow_worker\n");
+	printf("create_subflow_worker::msleep!!:%d\n", jiffies_to_msecs(get_jiffies_64()));	
 	struct fullmesh_priv *pm_priv = container_of(work,
 						     struct fullmesh_priv,
 						     subflow_work);
 	struct mptcp_cb *mpcb = pm_priv->mpcb;
 	struct sock *meta_sk = mpcb->meta_sk;
 	struct mptcp_loc_addr *mptcp_local;
-	struct mptcp_fm_ns *fm_ns = fm_get_ns(sock_net(meta_sk));
+	struct mptcp_fm_ns *fm_ns = fm_get_ns(sock_net(meta_sk));	
 	int iter = 0, retry = 0;
 	int i, j, k=0;
-	//printf("[mptcp_fullmesh->cnt_subflows]%d\n", pm_priv->mpcb->cnt_subflows);
 
 	/* We need a local (stable) copy of the address-list. Really, it is not
 	 * such a big deal, if the address-list is not 100% up-to-date.
@@ -170,6 +220,7 @@ static void create_subflow_worker(struct work_struct *work)
 	
 	if (!mptcp_local)
 		return;
+	
 
 next_subflow:
 	if (iter) {
@@ -215,6 +266,23 @@ next_subflow:
 			printf("[debug_loc]%d\n", i);
 			i=2;
 			/* If a route is not yet available then retry once */
+			//-- wait pahse--//
+			//printf("lane_info:%d, addr:%d\n", mptcp_local->locaddr4[i].lane_info, mptcp_local->locaddr4[i].addr.s_addr);
+			//printf("Finish!:%d\n", meta_sk->__sk_common.time_limit);
+			while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+				msleep(10);
+				//printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
+			}	
+			/*
+			if(mptcp_local->locaddr4[i].lane_info == 1){
+				while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+					msleep(10);
+					printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
+				}	
+			}else{	
+				printf("wait_hitt!!\n");
+			}*/
+			//printf("Finish!:%d\n", jiffies_to_msecs(get_jiffies_64()));
 			if (mptcp_init4_subsockets(meta_sk, &mptcp_local->locaddr4[i],
 						   rem) == -ENETUNREACH)
 				retry = rem->retry_bitfield |= (1 << i);
@@ -411,9 +479,11 @@ next_event:
 			goto duno;
 
 		if (event->family == AF_INET) {
+			//printf("[full_mesh]add!!%d\n", event->u.addr4.s_addr);
 			mptcp_local->locaddr4[i].addr.s_addr = event->u.addr4.s_addr;
 			mptcp_local->locaddr4[i].id = i;
 			mptcp_local->locaddr4[i].low_prio = event->low_prio;
+			mptcp_init_lane_set(mptcp_local->locaddr4, i);
 		} else {
 			mptcp_local->locaddr6[i].addr = event->u.addr6;
 			mptcp_local->locaddr6[i].id = i + MPTCP_MAX_ADDR;

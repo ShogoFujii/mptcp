@@ -5828,7 +5828,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
 		 * subtype.
 		 */
 		if (tp->mpc && !is_master_tp(tp))
-			printf("mptcp's ack?\n");
+			//printf("mptcp's ack?\n");
 			tcp_send_ack(sk);
 		break;
 

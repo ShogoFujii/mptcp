@@ -41,10 +41,10 @@
 #include <net/request_sock.h>
 #include <net/tcp.h>
 
-#include <string.h>
+//#include <string.h>
 
 int sysctl_tcp_max_ssthresh = 0;
-int judge_cnt=0, thresh=-1;
+//int judge_cnt=0, thresh=-1;
 
 u32 mptcp_v4_get_nonce(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport,
 		       u32 seq)
@@ -315,6 +315,7 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 
 	/* Address is not known yet, store it */
 	printf("[mptcp_ipv4][%d]new_adress_stored:%d\n", id, addr->s_addr);
+	
 	rem4->addr.s_addr = addr->s_addr;
 	rem4->port = port;
 	rem4->bitfield = 0;
@@ -329,6 +330,7 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	return 0;
 }
 
+/*
 void mptcp_init_lane_set(struct sock *sk)
 {
 	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
@@ -376,6 +378,8 @@ void mptcp_init_lane_set(struct sock *sk)
 		}
 	}
 }
+*/
+
 /* Sets the bitfield of the remote-address field
  * local address is not set as it will disappear with the global address-list
  */
