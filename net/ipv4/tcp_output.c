@@ -1026,7 +1026,7 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 
 	//printf("addr:%d, cwnd_transmit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd);
 	if (sk->__sk_common.skc_daddr == 16777482 || sk->__sk_common.skc_daddr == 16777738){
-	printf("addr:%d, cwnd_transmit:%d, limit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd, sk->__sk_common.time_limit);
+	//printf("addr:%d, cwnd_transmit:%d, limit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd, sk->__sk_common.time_limit);
 	//rcu_read_lock();
 	//mptcp_local = rcu_dereference(fm_ns->local);
 	//if (sk->__sk_common.skc_daddr == 16777738){
@@ -1041,7 +1041,7 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 			if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
 				//printf("over!!\n");
 				//printf("daddr:%d\n", sk->__sk_common.skc_daddr);
-				printf("[judge]ldaddr:%d, imit:%d, now:%d\n", sk->__sk_common.skc_daddr, sk->__sk_common.time_limit, jiffies_to_msecs(get_jiffies_64()));
+				//printf("[judge]ldaddr:%d, imit:%d, now:%d\n", sk->__sk_common.skc_daddr, sk->__sk_common.time_limit, jiffies_to_msecs(get_jiffies_64()));
 				tcp_sk(sk)->snd_cwnd = 0;
 				return net_xmit_eval(1);
 			}

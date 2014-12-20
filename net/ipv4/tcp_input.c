@@ -2848,10 +2848,15 @@ static inline void tcp_ack_update_rtt(struct sock *sk, const int flag,
 {
 	const struct tcp_sock *tp = tcp_sk(sk);
 	/* Note that peer MAY send zero echo. In this case it is ignored. (rfc1323) */
-	if (tp->rx_opt.saw_tstamp && tp->rx_opt.rcv_tsecr)
+	//printf("rcv!!:%d", tcphdr(sk).th_seq);
+	if (tp->rx_opt.saw_tstamp && tp->rx_opt.rcv_tsecr){
+		//printf("update_rtt\n");
 		tcp_ack_saw_tstamp(sk, flag);
-	else if (seq_rtt >= 0)
+	}
+	else if (seq_rtt >= 0){
 		tcp_ack_no_tstamp(sk, seq_rtt, flag);
+		printf("no_update\n");
+	}
 }
 
 static void tcp_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
@@ -5111,6 +5116,8 @@ int tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 			const struct tcphdr *th, unsigned int len)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
+	if(sk->__sk_common.lane_info == 1)
+		printf("[tcp_rcv_established]src:%d, dst:%d, rcv%10u\n",sk->__sk_common.skc_daddr,sk->__sk_common.skc_rcv_saddr, ntohl(th->seq));
 
 	if (unlikely(sk->sk_rx_dst == NULL))
 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
