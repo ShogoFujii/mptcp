@@ -1055,6 +1055,8 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 			}
 		}
 */
+	}else{
+		tcp_sk(sk)->snd_cwnd = 1;
 	}
 
 	//printf("addr:%d, cnt:%d, cwnd:%d, now%d\n", sk->__sk_common.skc_daddr, cnt, tcp_sk(sk)->snd_cwnd, jiffies_to_msecs(get_jiffies_64()));

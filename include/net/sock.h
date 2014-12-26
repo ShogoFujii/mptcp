@@ -191,6 +191,7 @@ struct sock_common {
 	int path_state;
 	int is_path;
 	int base_rtt;
+	int base_path;
 	union {
 		struct hlist_node	skc_bind_node;
 		struct hlist_nulls_node skc_portaddr_node;

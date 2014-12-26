@@ -271,10 +271,10 @@ next_subflow:
 			//printf("lane_info:%d, addr:%d\n", mptcp_local->locaddr4[i].lane_info, mptcp_local->locaddr4[i].addr.s_addr);
 			//printf("Finish!:%d\n", meta_sk->__sk_common.time_limit);
 			//printf("cwnd:%d\n", tcp_sk(mpcb->master_sk)->snd_cwnd);
-			tcp_sk(mpcb->master_sk)->snd_cwnd = 0;
+			tcp_sk(mpcb->master_sk)->snd_cwnd = 1;
 			if(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
 				mptcp_task_save(work);
-				goto next_subflow;
+				//goto next_subflow;
 			}
 			//while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
 				//msleep(10);

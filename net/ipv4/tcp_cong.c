@@ -456,26 +456,40 @@ void mptcp_cost_calc(struct sock *sk)
 	for(j=1; j<beta; j++){
 		nu_rtt = nu_rtt * nu_rtt;
 	}
+	if(sk->__sk_common.lane_info == 0){
+		thre_cost=tcp_time_stamp - sk->__sk_common.time_limit_stamp;
+		for(j=1; j<delta; j++){
+			thre_cost = thre_cost * thre_cost;
+		}
+		thre_cost = delta * thre_cost;
+	}else{
+		thre_cost=0;
+	}
+	sk->__sk_common.path_cost = alpha * nu_rtt + delta * thre_cost;
+	//printf("debug[lane:%d]::addr:%d, cost:%d\n",sk->__sk_common.lane_info, sk->__sk_common.skc_daddr, sk->__sk_common.path_cost);
 	
-	cost = alpha * nu_rtt;
-	thre_cost=tcp_time_stamp - sk->__sk_common.time_limit_stamp;
-	printf("[judge]%d, %d\n", jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit);
-	if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
-		printf("hittttttttttttttttt\n");
-		if(queue_cnt>0)
-			mptcp_task_queue();
-	}	
 
+	//printf("[judge]%d, %d\n", jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit);
+	/*
+	if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
+		if(queue_cnt>0){
+			printf("hittttttttttttttttt\n");
+			mptcp_task_queue();
+		}
+	}	
+*/
+/*
 	if (sk->__sk_common.lane_info==0){
 		printf("now:%d, now2:%d, limit:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit_stamp);
 		printf("debug[lane:%d]::addr:%d, nu_rtt:%d, thre_cost:%d\n",sk->__sk_common.lane_info, sk->__sk_common.skc_daddr, nu_rtt, thre_cost);
 	}
-
+*/
 	
+	printf("now:%d, now2:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()));
 	mptcp_for_each_sk(mpcb, sub_sk) {
 		struct tcp_sock *sub_tp = tcp_sk(sub_sk);
 		//if(sub_sk->__sk_common.lane_info == 0){
-		printf("[tcp_reno_cong_avod:i%d::%d]:%d, sport:%5u srtt:%d, base_rtt:%d, cwnd:%d\n", i, sub_sk->__sk_common.lane_info, sub_sk->__sk_common.skc_daddr, ntohs(sub_tp->inet_conn.icsk_inet.inet_sport), sub_tp->srtt, sub_sk->__sk_common.base_rtt, sub_tp->snd_cwnd);
+		printf("[tcp_reno_cong_avod:i%d::%d]:%d, cost:%d, sport:%5u srtt:%d, base_rtt:%d, cwnd:%d\n", i, sub_sk->__sk_common.lane_info, sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.path_cost, ntohs(sub_tp->inet_conn.icsk_inet.inet_sport), sub_tp->srtt, sub_sk->__sk_common.base_rtt, sub_tp->snd_cwnd);
 		//}
 		i++;
 	}
