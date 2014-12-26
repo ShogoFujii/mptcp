@@ -1289,7 +1289,7 @@ void mptcp_del_sock(struct sock *sk)
 
 void mptcp_init_limit_set(struct sock *sk)
 {
-	printf("mptcp_init_limit_set\n");
+	//printf("mptcp_init_limit_set\n");
 	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
 	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
 	//printf("[judge]%d\n", judge_cnt);
@@ -1326,11 +1326,13 @@ void mptcp_init_limit_set(struct sock *sk)
 			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){	
 				sk->__sk_common.lane_info = lane[i];
 				sk->__sk_common.lane_child = child[i];
-				if(sk->__sk_common.time_limit == 0){
+				if(sk->__sk_common.time_limit == 0 || sk->__sk_common.time_limit_stamp == 0){
 					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
 					sk->__sk_common.time_limit = thresh;
+					sk->__sk_common.time_limit_stamp = tcp_time_stamp + LANE_THRESH/4;
+					printf("now:%d, limit_stamp:%d", tcp_time_stamp, sk->__sk_common.time_limit_stamp);
 				}
-				printf("[sk_check_i:%d]addr:%d, lane_info:%d, lane_child:%d, limit:%d\n", i, sk->__sk_common.skc_daddr, sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				printf("[sk_check_i:%d]addr:%d, lane_info:%d, lane_child:%d, limit:%d, limit_stamp%d\n", i, sk->__sk_common.skc_daddr, sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit, sk->__sk_common.time_limit_stamp);
 				cnt2++;
 			}
 		}
@@ -1375,7 +1377,13 @@ void mptcp_update_metasocket(struct sock *sk, struct sock *meta_sk)
 
 	if (mpcb->pm_ops->new_session)
 		mpcb->pm_ops->new_session(meta_sk, id);
-
+	struct sock *sub_sk;
+	mptcp_for_each_sk(mpcb, sub_sk){
+		//printf("test::\n");
+		struct tcp_sock *sub_tp = tcp_sk(sub_sk);	
+		//printf("[mptcp_write_xmit]:%d, cwnd:%d, srtt:%d\n",  sub_sk->__sk_common.skc_daddr, sub_tp->srtt, sub_tp->snd_cwnd);
+	}
+	
 	tcp_sk(sk)->mptcp->send_mp_prio = tcp_sk(sk)->mptcp->low_prio;
 }
 

@@ -186,6 +186,11 @@ struct sock_common {
 	int lane_info;
 	int lane_child;
 	uint32_t time_limit;
+	uint32_t time_limit_stamp;
+	uint32_t path_cost;
+	int path_state;
+	int is_path;
+	int base_rtt;
 	union {
 		struct hlist_node	skc_bind_node;
 		struct hlist_nulls_node skc_portaddr_node;

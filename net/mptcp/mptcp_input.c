@@ -98,6 +98,18 @@ static void mptcp_clean_rtx_queue(struct sock *meta_sk, u32 prior_snd_una)
 	struct mptcp_cb *mpcb = meta_tp->mpcb;
 	bool acked = false;
 	u32 acked_pcount;
+	//printf("mptcp_clean_rtx_queue\n");
+	int i=0;
+	struct sock *sub_sk;
+	mptcp_for_each_sk(mpcb, sub_sk){
+		//printf ("[mptcp_v4_join_request]testtttttttttt:%d\n", i);
+		if (i < 3){
+			struct tcp_sock *sub_tp = tcp_sk(sub_sk);
+			//printf("[mptcp_v4_join_request]:%d, cwnd:%d, srtt:%d\n", sub_sk->__sk_common.skc_daddr, sub_tp->srtt, sub_tp->snd_cwnd);
+		}
+		i++;
+	}
+	//printf("\n");
 
 	while ((skb = tcp_write_queue_head(meta_sk)) &&
 	       skb != tcp_send_head(meta_sk)) {

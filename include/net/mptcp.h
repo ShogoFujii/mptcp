@@ -694,6 +694,8 @@ extern spinlock_t mptcp_reqsk_hlock;	/* hashtable protection */
  */
 extern spinlock_t mptcp_tk_hashlock;	/* hashtable protection */
 
+void create_subflow_worker2(struct work_struct *work);
+
 void mptcp_data_ready(struct sock *sk, int bytes);
 void mptcp_write_space(struct sock *sk);
 

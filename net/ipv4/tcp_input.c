@@ -102,6 +102,7 @@ int sysctl_tcp_thin_dupack __read_mostly;
 int sysctl_tcp_moderate_rcvbuf __read_mostly = 1;
 int sysctl_tcp_early_retrans __read_mostly = 3;
 
+long min_rtt = 0;
 #define TCP_REMNANT (TCP_FLAG_FIN|TCP_FLAG_URG|TCP_FLAG_SYN|TCP_FLAG_PSH)
 #define TCP_HP_BITS (~(TCP_RESERVED_BITS|TCP_FLAG_PSH))
 
@@ -622,6 +623,7 @@ static void tcp_event_data_recv(struct sock *sk, struct sk_buff *skb)
  */
 static void tcp_rtt_estimator(struct sock *sk, const __u32 mrtt)
 {
+	//printf("rtt_estimator:%d\n", sk->__sk_common.skc_daddr);
 	struct tcp_sock *tp = tcp_sk(sk);
 	long m = mrtt; /* RTT */
 
@@ -681,6 +683,11 @@ static void tcp_rtt_estimator(struct sock *sk, const __u32 mrtt)
 		tp->mdev_max = tp->rttvar = max(tp->mdev, tcp_rto_min(sk));
 		tp->rtt_seq = tp->snd_nxt;
 	}
+	if (sk->__sk_common.skc_daddr == 16777738 || sk->__sk_common.skc_daddr == 16777482){
+		if(min_rtt == 0 || min_rtt > mrtt)
+			min_rtt=mrtt;
+	}
+	//printf("mrtt:%d, min_rtt:%d, subtra:%d, srtt:%d\n", mrtt, min_rtt, mrtt-min_rtt, tp->srtt);
 }
 
 /* Calculate rto without backoff.  This is the second half of Van Jacobson's
@@ -689,6 +696,8 @@ static void tcp_rtt_estimator(struct sock *sk, const __u32 mrtt)
 void tcp_set_rto(struct sock *sk)
 {
 	const struct tcp_sock *tp = tcp_sk(sk);
+	//if (sk->__sk_common.lane_info == 1)
+		//printf("[calculated:%d]srtt:%d, mdev:%d, mdev_max:%d, rtt_seq:%10lu\n",sk->__sk_common.skc_daddr ,tp->srtt, tp->mdev, tp->mdev_max, ntohl(tp->rtt_seq));
 	/* Old crap is replaced with new one. 8)
 	 *
 	 * More seriously:
@@ -2848,19 +2857,20 @@ static inline void tcp_ack_update_rtt(struct sock *sk, const int flag,
 {
 	const struct tcp_sock *tp = tcp_sk(sk);
 	/* Note that peer MAY send zero echo. In this case it is ignored. (rfc1323) */
-	//printf("rcv!!:%d", tcphdr(sk).th_seq);
+	//printf("tcp_ack_update_rtt::");
 	if (tp->rx_opt.saw_tstamp && tp->rx_opt.rcv_tsecr){
 		//printf("update_rtt\n");
 		tcp_ack_saw_tstamp(sk, flag);
 	}
 	else if (seq_rtt >= 0){
 		tcp_ack_no_tstamp(sk, seq_rtt, flag);
-		printf("no_update\n");
+		//printf("no_update\n");
 	}
 }
 
 static void tcp_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 {
+	//printf("cong_avoid");
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	icsk->icsk_ca_ops->cong_avoid(sk, ack, in_flight);
 	tcp_sk(sk)->snd_cwnd_stamp = tcp_time_stamp;
@@ -2947,6 +2957,8 @@ u32 tcp_tso_acked(struct sock *sk, struct sk_buff *skb)
 static int tcp_clean_rtx_queue(struct sock *sk, int prior_fackets,
 			       u32 prior_snd_una)
 {
+	//printf("tcp_clean_rtx_queun:%d, %d\n", sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
+	//printf("tcp_clean_rtx_queue");
 	struct tcp_sock *tp = tcp_sk(sk);
 	const struct inet_connection_sock *icsk = inet_csk(sk);
 	struct sk_buff *skb;
@@ -3281,6 +3293,7 @@ static int tcp_ack(struct sock *sk, struct sk_buff *skb, int flag)
 	int prior_packets = tp->packets_out;
 	const int prior_unsacked = tp->packets_out - tp->sacked_out;
 	int acked = 0; /* Number of packets newly acked */
+	//printf("tcp_Ack");
 
 	/* If the ack is older than previous acks
 	 * then we can probably ignore it.
@@ -5116,9 +5129,10 @@ int tcp_rcv_established(struct sock *sk, struct sk_buff *skb,
 			const struct tcphdr *th, unsigned int len)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
+/*
 	if(sk->__sk_common.lane_info == 1)
 		printf("[tcp_rcv_established]src:%d, dst:%d, rcv%10u\n",sk->__sk_common.skc_daddr,sk->__sk_common.skc_rcv_saddr, ntohl(th->seq));
-
+*/
 	if (unlikely(sk->sk_rx_dst == NULL))
 		inet_csk(sk)->icsk_af_ops->sk_rx_dst_set(sk, skb);
 	/*
@@ -5424,6 +5438,7 @@ static int tcp_rcv_synsent_state_process(struct sock *sk, struct sk_buff *skb,
 	int saved_clamp = tp->rx_opt.mss_clamp;
 	struct mptcp_options_received mopt;
 	mptcp_init_mp_opt(&mopt);
+	//printf("syn_ack_rcv\n");
 
 	tcp_parse_options(skb, &tp->rx_opt,
 			  tp->mpc ? &tp->mptcp->rx_opt : &mopt, 0, &foc);
@@ -5693,6 +5708,7 @@ int tcp_rcv_state_process(struct sock *sk, struct sk_buff *skb,
 	bool acceptable;
 
 	tp->rx_opt.saw_tstamp = 0;
+	//printf("ack_rcv\n");
 
 	switch (sk->sk_state) {
 	case TCP_CLOSE:

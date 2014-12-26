@@ -87,11 +87,13 @@
 
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
+#include <string.h>
 
 int sysctl_tcp_tw_reuse __read_mostly;
 int sysctl_tcp_low_latency __read_mostly;
 EXPORT_SYMBOL(sysctl_tcp_low_latency);
 
+int cnt_lane=0, thresh_lane=-1;
 
 #ifdef CONFIG_TCP_MD5SIG
 static int tcp_v4_md5_hash_hdr(char *md5_hash, const struct tcp_md5sig_key *key,
@@ -140,6 +142,58 @@ int tcp_twsk_unique(struct sock *sk, struct sock *sktw, void *twp)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(tcp_twsk_unique);
+
+void tcp_init_lane_set(struct sock *sk)
+{
+	printf("tcp_init_lane_set\n");
+	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
+	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
+	//printf("[judge]%d\n", judge_cnt);
+	strcpy(target, ETH_LIST);
+	strcpy(p_lane, LANE_INFO);
+	strcpy(p_child, CHILD_INFO);
+
+	if(cnt_lane < INTERFACE_NUM){
+		test=strtok(target, ",");
+		while(test != NULL){
+			addr[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_lane, ",");		
+		while(test != NULL){
+			lane[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+		test="";
+		i=0;
+		test=strtok(p_child, ",");		
+		while(test != NULL){
+			child[i]=atoi(test);
+			i++;
+			test=strtok(NULL, ",");
+		}
+	}
+
+	if(cnt_lane < INTERFACE_NUM){
+		for(i=0;i < INTERFACE_NUM;i++){
+			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
+				sk->__sk_common.lane_info = lane[i];
+				sk->__sk_common.lane_child = child[i];
+				if(sk->__sk_common.time_limit == 0){
+					thresh_lane = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
+					sk->__sk_common.time_limit = thresh_lane;
+					cnt_lane++;
+					printf("[tcp_lane_check_i:%d]addr:%d, lane_info:%d, lane_child:%d, limit:%d\n", i, sk->__sk_common.skc_daddr, sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
+				}
+			}
+		}
+	}
+}
+
 
 /* This will initiate an outgoing connection. */
 int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
@@ -194,6 +248,7 @@ int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 	if (!inet->inet_saddr)
 		inet->inet_saddr = fl4->saddr;
 	inet->inet_rcv_saddr = inet->inet_saddr;
+	
 
 	if (tp->rx_opt.ts_recent_stamp && inet->inet_daddr != daddr) {
 		/* Reset inherited state */
@@ -209,6 +264,9 @@ int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 
 	inet->inet_dport = usin->sin_port;
 	inet->inet_daddr = daddr;
+	tcp_init_lane_set(sk);
+	printf("[connect]saddr:%d, daddr:%d, dport:%d, ", inet->inet_saddr, inet->inet_daddr, htons(inet->inet_sport));
+	printf("lane_info:%d\n", sk->__sk_common.lane_info);
 
 	inet_csk(sk)->icsk_ext_hdr_len = 0;
 	if (inet_opt)
@@ -245,6 +303,7 @@ int tcp_v4_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 
 	inet->inet_id = tp->write_seq ^ jiffies;
 
+	//printf("[connect]saddr:%d, daddr:%d\n", sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 	err = tcp_connect(sk);
 
 	rt = NULL;
@@ -882,8 +941,8 @@ int tcp_v4_send_synack(struct sock *sk, struct dst_entry *dst,
 		if (!tcp_rsk(req)->snt_synack && !err)
 			tcp_rsk(req)->snt_synack = tcp_time_stamp;
 	}
-	printf("send_synack");
-	printf("[tcp_ipv4]req_addr:%d, %d\n", ireq->loc_addr, ireq->rmt_addr);
+	//printf("send_synack");
+	//printf("[tcp_ipv4]req_addr:%d, %d\n", ireq->loc_addr, ireq->rmt_addr);
 	return err;
 }
 
@@ -1492,6 +1551,7 @@ int tcp_v4_conn_request(struct sock *sk, struct sk_buff *skb)
 	struct sk_buff *skb_synack;
 	int do_fastopen;
 
+	//printf("syn_rcv::::::::::::::::::::::::\n");
 	tcp_clear_options(&tmp_opt);
 	tmp_opt.mss_clamp = TCP_MSS_DEFAULT;
 	tmp_opt.user_mss  = tp->rx_opt.user_mss;
@@ -1846,6 +1906,7 @@ static __sum16 tcp_v4_checksum_init(struct sk_buff *skb)
  */
 int tcp_v4_do_rcv(struct sock *sk, struct sk_buff *skb)
 {
+	//printf("tcp_v4_do_rcv::");
 	struct sock *rsk;
 #ifdef CONFIG_TCP_MD5SIG
 	/*

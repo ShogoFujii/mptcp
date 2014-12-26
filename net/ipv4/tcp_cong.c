@@ -14,11 +14,14 @@
 #include <linux/list.h>
 #include <linux/gfp.h>
 #include <net/tcp.h>
+#include <net/mptcp.h>
 //#include <string.h>
 
 //int sysctl_tcp_max_ssthresh = 0;
 
-//int judge_cnt=0, thresh=-1;
+int base_rtt=0;
+struct work_struct *work_save[INTERFACE_NUM], *last_work;
+int work_cnt=0, queue_cnt=0;
 
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
@@ -368,6 +371,7 @@ void tcp_slow_start(struct tcp_sock *tp)
 	int cnt; /* increase in packets */
 	unsigned int delta = 0;
 	u32 snd_cwnd = tp->snd_cwnd;
+	//printf("slow_start\n");
 	//printf("slow_start:%d, lane:%d\n", tp->inet_conn.icsk_inet.sk.__sk_common.skc_daddr, tp->inet_conn.icsk_inet.sk.__sk_common.lane_info);
 	//printf("now:%d\n",jiffies_to_msecs(tcp_time_stamp)>>3);
 	//printf("now:%d\n", jiffies_to_msecs(get_jiffies_64()));
@@ -416,6 +420,68 @@ void tcp_cong_avoid_ai(struct tcp_sock *tp, u32 w)
 }
 EXPORT_SYMBOL_GPL(tcp_cong_avoid_ai);
 
+void mptcp_task_save(struct work_struct *work)
+{
+	if(work_cnt==0 || last_work != work){
+		work_save[work_cnt] = work;
+		last_work = work;
+		work_cnt++;
+		queue_cnt++;
+	}
+	//printf("test:::::::::::::::::::::::::%d\n", work_cnt);
+}
+
+void mptcp_task_queue()
+{
+	printf("test:::::::::::::::::::::::::%d\n\n\n", work_cnt);
+	create_subflow_worker2(work_save[0]);
+	queue_cnt--;
+}
+
+void mptcp_cost_calc(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct mptcp_cb *mpcb = tcp_sk(sk)->mpcb;
+	struct sock *sub_sk;
+	int i=0, j, nu_rtt=0, cost=0, thre_cost=0;
+	int alpha=1;
+	int beta=1;
+	int delta=1;
+	int gamma=1;
+	/* updating base_rtt */
+	if(sk->__sk_common.base_rtt == 0 ||sk->__sk_common.base_rtt > tp->srtt){
+		sk->__sk_common.base_rtt=tp->srtt;
+	}
+	nu_rtt = tp->srtt - sk->__sk_common.base_rtt;
+	for(j=1; j<beta; j++){
+		nu_rtt = nu_rtt * nu_rtt;
+	}
+	
+	cost = alpha * nu_rtt;
+	thre_cost=tcp_time_stamp - sk->__sk_common.time_limit_stamp;
+	printf("[judge]%d, %d\n", jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit);
+	if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
+		printf("hittttttttttttttttt\n");
+		if(queue_cnt>0)
+			mptcp_task_queue();
+	}	
+
+	if (sk->__sk_common.lane_info==0){
+		printf("now:%d, now2:%d, limit:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit_stamp);
+		printf("debug[lane:%d]::addr:%d, nu_rtt:%d, thre_cost:%d\n",sk->__sk_common.lane_info, sk->__sk_common.skc_daddr, nu_rtt, thre_cost);
+	}
+
+	
+	mptcp_for_each_sk(mpcb, sub_sk) {
+		struct tcp_sock *sub_tp = tcp_sk(sub_sk);
+		//if(sub_sk->__sk_common.lane_info == 0){
+		printf("[tcp_reno_cong_avod:i%d::%d]:%d, sport:%5u srtt:%d, base_rtt:%d, cwnd:%d\n", i, sub_sk->__sk_common.lane_info, sub_sk->__sk_common.skc_daddr, ntohs(sub_tp->inet_conn.icsk_inet.inet_sport), sub_tp->srtt, sub_sk->__sk_common.base_rtt, sub_tp->snd_cwnd);
+		//}
+		i++;
+	}
+		
+}
+
 /*
  * TCP Reno congestion control
  * This is special case used for fallback as well.
@@ -426,17 +492,23 @@ EXPORT_SYMBOL_GPL(tcp_cong_avoid_ai);
 void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	//printf("hitt:%d\n", test_cnt);
-	//test_cnt++
-	if (!tcp_is_cwnd_limited(sk, in_flight))
+	//if(sk->__sk_common.lane_info == 0)
+		mptcp_cost_calc(sk);
+	if (!tcp_is_cwnd_limited(sk, in_flight)){
+		//printf("tcp_is_cwnd_limited\n");
 		return;
+	}
 
 	/* In "safe" area, increase. */
-	if (tp->snd_cwnd <= tp->snd_ssthresh)
+	if (tp->snd_cwnd <= tp->snd_ssthresh){
+		//printf("tcp_slow_start\n");
 		tcp_slow_start(tp);
+	}
 	/* In dangerous area, increase slowly. */
-	else
+	else{
+		//printf("tcp_cong_avoid_ai\n");
 		tcp_cong_avoid_ai(tp, tp->snd_cwnd);
+	}
 }
 EXPORT_SYMBOL_GPL(tcp_reno_cong_avoid);
 

@@ -1089,7 +1089,17 @@ int mptcp_write_xmit(struct sock *meta_sk, unsigned int mss_now, int nonagle,
 	int reinject = 0;
 
 	sent_pkts = 0;
+	struct sock *sub_sk;
+	int i=0;
+	//printf("[mptcp_write_xmit]:%d, cwnd:%d, srtt:%d\n",  meta_sk->__sk_common.skc_daddr, meta_tp->srtt, meta_tp->snd_cwnd);
 
+	mptcp_for_each_sk(mpcb, sub_sk){
+		struct tcp_sock *sub_tp = tcp_sk(sub_sk);	
+		//printf("[mptcp_write_xmit:%d]:%d, cwnd:%d, srtt:%d\n", i,  sub_sk->__sk_common.skc_daddr, sub_tp->srtt, sub_tp->snd_cwnd);
+		//printf("time_limit:%d, lane_info:%d\n", sub_sk->__sk_common.time_limit, sub_sk->__sk_common.lane_info);
+		//sub_tp->snd_cwnd = 10;
+	i++;
+	}
 	/* Currently mtu-probing is not done in MPTCP */
 	if (!push_one && 0) {
 		/* Do MTU probing. */

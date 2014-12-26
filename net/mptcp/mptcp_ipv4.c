@@ -45,6 +45,7 @@
 
 int sysctl_tcp_max_ssthresh = 0;
 //int judge_cnt=0, thresh=-1;
+int d_cnt=0;
 
 u32 mptcp_v4_get_nonce(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport,
 		       u32 seq)
@@ -123,8 +124,8 @@ static void mptcp_v4_join_request(struct sock *meta_sk, struct sk_buff *skb)
 	__be32 saddr = ip_hdr(skb)->saddr;
 	__be32 daddr = ip_hdr(skb)->daddr;
 	__u32 isn = TCP_SKB_CB(skb)->when;
-	printf("[mptcp_ipv4_joinrequest]saddr:%d\n", ip_hdr(skb)->saddr);
-	printf("[mptcp_ipv4_joinrequest]daddr:%d\n", daddr);
+	//printf("[mptcp_ipv4_joinrequest]saddr:%d\n", ip_hdr(skb)->saddr);
+	//printf("[mptcp_ipv4_joinrequest]daddr:%d\n", daddr);
 	//printf("[mptcp_ipv4]mpcb->cnt_established%d\n",mpcb->cnt_established);
 	//printf("[tcp_ipv4]isn:%d\n", isn);
 	//printf("[tcp_ipv4]rem_key:%d\n\n", mtreq->mptcp_rem_key);
@@ -314,7 +315,8 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	rem4 = &mpcb->remaddr4[i];
 
 	/* Address is not known yet, store it */
-	printf("[mptcp_ipv4][%d]new_adress_stored:%d\n", id, addr->s_addr);
+	//printf("[mptcp_ipv4][%d]new_adress_stored:%d\n", id, addr->s_addr);
+
 	
 	rem4->addr.s_addr = addr->s_addr;
 	rem4->port = port;
@@ -411,6 +413,7 @@ int mptcp_v4_do_rcv(struct sock *meta_sk, struct sk_buff *skb)
 		sk = inet_lookup_established(sock_net(meta_sk), &tcp_hashinfo,
 					     iph->saddr, th->source, iph->daddr,
 					     th->dest, inet_iif(skb));
+		//printf("[mptcp_v4_rcv]daddr:%d, saddr:%d\n", iph->daddr, iph->saddr);
 
 		if (!sk) {
 			kfree_skb(skb);
@@ -533,7 +536,6 @@ struct sock *mptcp_v4_search_req(const __be16 rport, const __be32 raddr,
 int mptcp_init4_subsockets(struct sock *meta_sk, const struct mptcp_loc4 *loc,
 			   struct mptcp_rem4 *rem)
 {
-	printf("mptcp_init4_subsockets\n");
 	struct tcp_sock *tp;
 	struct sock *sk;
 	struct sockaddr_in loc_in, rem_in;
@@ -586,8 +588,10 @@ int mptcp_init4_subsockets(struct sock *meta_sk, const struct mptcp_loc4 *loc,
 		rem_in.sin_port = inet_sk(meta_sk)->inet_dport;
 	loc_in.sin_addr = loc->addr;
 	rem_in.sin_addr = rem->addr;
-	//printf("[tcp_ipv4]rem:%d,id:%d,port:%d\n", rem_in.sin_addr.s_addr,rem->id,rem->port);
-	//printf("[tcp_ipv4]loc:%d,id:%d\n\n", loc_in.sin_addr.s_addr, loc->id);
+	printf("[tcp_ipv4]rem:%d,id:%d,port:%5u\n", rem_in.sin_addr.s_addr,rem->id,ntohs(rem->port));
+	printf("[tcp_ipv4]loc:%d,id:%d\n", loc_in.sin_addr.s_addr, loc->id);
+	printf("mptcp_init4_subsockets:%d\n", d_cnt);
+	d_cnt++;
 
 	ret = sock.ops->bind(&sock, (struct sockaddr *)&loc_in, ulid_size);
 	if (ret < 0) {

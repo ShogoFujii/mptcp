@@ -886,7 +886,6 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 	struct tcp_md5sig_key *md5;
 	struct tcphdr *th;
 	int err;
-
 	BUG_ON(!skb || !tcp_skb_pcount(skb));
 
 	/* If congestion control is doing timestamping, we must
@@ -1014,27 +1013,14 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 	if (after(tcb->end_seq, tp->snd_nxt) || tcb->seq == tcb->end_seq)
 		TCP_ADD_STATS(sock_net(sk), TCP_MIB_OUTSEGS,
 			      tcp_skb_pcount(skb));
-/*
-	if ((sk->__sk_common.skc_daddr == 16843018 ||sk->__sk_common.skc_daddr == 16843274) && cnt > 50){
-		err=1;
-		//tcp_sk(sk)->snd_cwnd = 0;
-		printf("hit");
-	}else{
-		err = icsk->icsk_af_ops->queue_xmit(skb, &inet->cork.fl);
-	}*/
 
+	//printf("test:", tcp_sk(sk)->mpcb->mptw_state);	
 
 	//printf("addr:%d, cwnd_transmit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd);
 	if (sk->__sk_common.skc_daddr == 16777482 || sk->__sk_common.skc_daddr == 16777738){
 	//printf("addr:%d, cwnd_transmit:%d, limit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd, sk->__sk_common.time_limit);
 	//rcu_read_lock();
 	//mptcp_local = rcu_dereference(fm_ns->local);
-	//if (sk->__sk_common.skc_daddr == 16777738){
-	//if (sk->__sk_common.lane_info == 0){
-	//tcp_sk(sk)->snd_cwnd = 0;
-	//if(sk->__sk_common.skc_state == TCP_SYN_RECV){
-		//printf("[transmit]state:%d\n", sk->__sk_common.skc_state);
-	//}
 		cnt++;
 		if(sk->__sk_common.time_limit != 0){
 			//printf("[judge]limit:%d, now:%d\n", sk->__sk_common.time_limit, jiffies_to_msecs(get_jiffies_64()));
@@ -1042,8 +1028,16 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 				//printf("over!!\n");
 				//printf("daddr:%d\n", sk->__sk_common.skc_daddr);
 				//printf("[judge]ldaddr:%d, imit:%d, now:%d\n", sk->__sk_common.skc_daddr, sk->__sk_common.time_limit, jiffies_to_msecs(get_jiffies_64()));
-				tcp_sk(sk)->snd_cwnd = 0;
-				return net_xmit_eval(1);
+				//printf("[stop]%d\n", tcp_sk(sk)->snd_cwnd);
+	
+				//tcp_sk(sk)->snd_cwnd = 0;
+				struct sock *sub_sk;
+				/*
+				mptcp_for_each_sk(mpcb, sub_sk){
+					//printf ("[mptcp_v4_join_request]testtttttttttt:%d\n", i);
+					struct tcp_sock *sub_tp = tcp_sk(sub_sk);
+				}*/
+				//return net_xmit_eval(1);
 			}
 		}
 		//if(cnt > 4)

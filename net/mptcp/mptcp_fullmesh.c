@@ -11,6 +11,7 @@
 #endif
 
 int judge_cnt=0;
+int flow_cnt=0;
 
 enum {
 	MPTCP_EVENT_ADD = 1,
@@ -261,18 +262,24 @@ next_subflow:
 		/* Are there still combinations to handle? */
 		if (remaining_bits) {
 			k++;
-			printf("[debug_rem]%d, k:%d, rem:%d\n", i, k, remaining_bits);
+			//printf("[debug_rem]%d, k:%d, rem:%d\n", i, k, remaining_bits);
 			int i = mptcp_find_free_index(~remaining_bits);
-			printf("[debug_loc]%d\n", i);
+			//printf("[debug_loc]%d\n", i);
 			i=2;
 			/* If a route is not yet available then retry once */
 			//-- wait pahse--//
 			//printf("lane_info:%d, addr:%d\n", mptcp_local->locaddr4[i].lane_info, mptcp_local->locaddr4[i].addr.s_addr);
 			//printf("Finish!:%d\n", meta_sk->__sk_common.time_limit);
-			while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
-				msleep(10);
-				//printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
-			}	
+			//printf("cwnd:%d\n", tcp_sk(mpcb->master_sk)->snd_cwnd);
+			tcp_sk(mpcb->master_sk)->snd_cwnd = 0;
+			if(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+				mptcp_task_save(work);
+				goto next_subflow;
+			}
+			//while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+				//msleep(10);
+				printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
+			//}	
 			/*
 			if(mptcp_local->locaddr4[i].lane_info == 1){
 				while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
@@ -283,12 +290,158 @@ next_subflow:
 				printf("wait_hitt!!\n");
 			}*/
 			//printf("Finish!:%d\n", jiffies_to_msecs(get_jiffies_64()));
+			//printf("debug:::::::::::%d, num:%d\n", flow_cnt, INTERFACE_NUM);
+			flow_cnt++;
+			if (flow_cnt == INTERFACE_NUM/2 - 1){
+				goto next_subflow;
+			}
 			if (mptcp_init4_subsockets(meta_sk, &mptcp_local->locaddr4[i],
 						   rem) == -ENETUNREACH)
 				retry = rem->retry_bitfield |= (1 << i);
 			goto next_subflow;
 		}
-		printf("out\n");
+		//printf("out\n");
+	}
+
+#if IS_ENABLED(CONFIG_IPV6)
+	mptcp_for_each_bit_set(mpcb->rem6_bits, i) {
+		struct mptcp_rem6 *rem;
+		u8 remaining_bits;
+
+		rem = &mpcb->remaddr6[i];
+		remaining_bits = ~(rem->bitfield) & mptcp_local->loc6_bits;
+
+		/* Are there still combinations to handle? */
+		if (remaining_bits) {
+			int i = mptcp_find_free_index(~remaining_bits);
+			/* If a route is not yet available then retry once */
+			if (mptcp_init6_subsockets(meta_sk, &mptcp_local->locaddr6[i],
+						   rem) == -ENETUNREACH)
+				retry = rem->retry_bitfield |= (1 << i);
+			goto next_subflow;
+		}
+	}
+#endif
+
+	if (retry && !delayed_work_pending(&pm_priv->subflow_retry_work)) {
+		sock_hold(meta_sk);
+		queue_delayed_work(mptcp_wq, &pm_priv->subflow_retry_work,
+				   msecs_to_jiffies(MPTCP_SUBFLOW_RETRY_DELAY));
+	}
+
+exit:
+	kfree(mptcp_local);
+	release_sock(meta_sk);
+	mutex_unlock(&mpcb->mutex);
+	sock_put(meta_sk);
+}
+
+void create_subflow_worker2(struct work_struct *work)
+{
+	printf("create_subflow_worker2::msleep!!:%d\n", jiffies_to_msecs(get_jiffies_64()));	
+	struct fullmesh_priv *pm_priv = container_of(work,
+						     struct fullmesh_priv,
+						     subflow_work);
+	struct mptcp_cb *mpcb = pm_priv->mpcb;
+	struct sock *meta_sk = mpcb->meta_sk;
+	struct mptcp_loc_addr *mptcp_local;
+	struct mptcp_fm_ns *fm_ns = fm_get_ns(sock_net(meta_sk));	
+	int iter = 0, retry = 0;
+	int i, j, k=0;
+
+	/* We need a local (stable) copy of the address-list. Really, it is not
+	 * such a big deal, if the address-list is not 100% up-to-date.
+	 */
+	rcu_read_lock_bh();
+	mptcp_local = rcu_dereference_bh(fm_ns->local);
+	mptcp_local = kmemdup(mptcp_local, sizeof(*mptcp_local), GFP_ATOMIC);
+	rcu_read_unlock_bh();
+	
+	
+	if (!mptcp_local)
+		return;
+	
+
+next_subflow:
+	if (iter) {
+		release_sock(meta_sk);
+		mutex_unlock(&mpcb->mutex);
+
+		yield();
+	}
+	mutex_lock(&mpcb->mutex);
+	lock_sock_nested(meta_sk, SINGLE_DEPTH_NESTING);
+
+	iter++;
+
+	if (sock_flag(meta_sk, SOCK_DEAD))
+		goto exit;
+
+	if (mpcb->master_sk &&
+	    !tcp_sk(mpcb->master_sk)->mptcp->fully_established)
+		goto exit;
+	
+	j=0;
+	mptcp_for_each_bit_set(3, j) {
+		j=1;
+	}
+	//k=0;
+	//printf("[debug_j]test\n");
+	mptcp_for_each_bit_set(mpcb->rem4_bits, i) {
+		struct mptcp_rem4 *rem;
+		u8 remaining_bits;
+
+	//	printf("[debug_j]test\n");
+		i=1;
+		rem = &mpcb->remaddr4[i];
+		remaining_bits = ~(rem->bitfield) & mptcp_local->loc4_bits;
+
+		if(k > 1){
+			remaining_bits=0;
+		}
+		/* Are there still combinations to handle? */
+		if (remaining_bits) {
+			k++;
+			//printf("[debug_rem]%d, k:%d, rem:%d\n", i, k, remaining_bits);
+			int i = mptcp_find_free_index(~remaining_bits);
+			//printf("[debug_loc]%d\n", i);
+			i=2;
+			/* If a route is not yet available then retry once */
+			//-- wait pahse--//
+			//printf("lane_info:%d, addr:%d\n", mptcp_local->locaddr4[i].lane_info, mptcp_local->locaddr4[i].addr.s_addr);
+			//printf("Finish!:%d\n", meta_sk->__sk_common.time_limit);
+			//printf("cwnd:%d\n", tcp_sk(mpcb->master_sk)->snd_cwnd);
+			tcp_sk(mpcb->master_sk)->snd_cwnd = 0;
+			if(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+				mptcp_task_save(work);
+				goto next_subflow;
+			}
+			//while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+				//msleep(10);
+				printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
+			//}	
+			/*
+			if(mptcp_local->locaddr4[i].lane_info == 1){
+				while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
+					msleep(10);
+					printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
+				}	
+			}else{	
+				printf("wait_hitt!!\n");
+			}*/
+			//printf("Finish!:%d\n", jiffies_to_msecs(get_jiffies_64()));
+			//printf("debug:::::::::::%d, num:%d\n", flow_cnt, INTERFACE_NUM);
+			printf("lane_info:%d, addr:%d\n", mptcp_local->locaddr4[i].lane_info, mptcp_local->locaddr4[i].addr.s_addr);
+			flow_cnt++;
+			if (flow_cnt == INTERFACE_NUM/2 - 1){
+				goto next_subflow;
+			}
+			if (mptcp_init4_subsockets(meta_sk, &mptcp_local->locaddr4[i],
+						   rem) == -ENETUNREACH)
+				retry = rem->retry_bitfield |= (1 << i);
+			goto next_subflow;
+		}
+		//printf("out\n");
 	}
 
 #if IS_ENABLED(CONFIG_IPV6)
@@ -632,7 +785,6 @@ duno:
 						if (event->low_prio != tp->mptcp->low_prio) {
 							tp->mptcp->send_mp_prio = 1;
 							tp->mptcp->low_prio = event->low_prio;
-
 							tcp_send_ack(sk);
 						}
 					}
@@ -643,7 +795,6 @@ duno:
 						if (event->low_prio != tp->mptcp->low_prio) {
 							tp->mptcp->send_mp_prio = 1;
 							tp->mptcp->low_prio = event->low_prio;
-
 							tcp_send_ack(sk);
 						}
 					}
