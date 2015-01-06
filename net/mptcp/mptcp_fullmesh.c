@@ -13,6 +13,12 @@
 int judge_cnt=0;
 int flow_cnt=0;
 
+struct remaddr_info {
+	struct mptcp_loc4 locaddr4[MPTCP_MAX_ADDR];
+	u8 remain_num;
+};
+struct remaddr_info rem_info;
+
 enum {
 	MPTCP_EVENT_ADD = 1,
 	MPTCP_EVENT_DEL,
@@ -63,7 +69,16 @@ struct mptcp_fm_ns {
 
 	struct net *net;
 };
+struct remaddr_info get_remaddr_info(void)
+{
+	return rem_info;
+}
 
+void store_remaddr_info(struct mptcp_loc4 loc4)
+{
+	rem_info.locaddr4[rem_info.remain_num] = loc4;
+	rem_info.remain_num++;
+}
 static struct mptcp_fm_ns *fm_get_ns(struct net *net)
 {
 	return (struct mptcp_fm_ns *)net->mptcp.path_managers[MPTCP_PM_FULLMESH];
@@ -199,7 +214,7 @@ void mptcp_init_lane_set(struct mptcp_loc4 *locaddr4, int num )
  **/
 static void create_subflow_worker(struct work_struct *work)
 {
-	printf("create_subflow_worker::msleep!!:%d\n", jiffies_to_msecs(get_jiffies_64()));	
+	//printf("create_subflow_worker::msleep!!:%d\n", jiffies_to_msecs(get_jiffies_64()));	
 	struct fullmesh_priv *pm_priv = container_of(work,
 						     struct fullmesh_priv,
 						     subflow_work);
@@ -208,7 +223,7 @@ static void create_subflow_worker(struct work_struct *work)
 	struct mptcp_loc_addr *mptcp_local;
 	struct mptcp_fm_ns *fm_ns = fm_get_ns(sock_net(meta_sk));	
 	int iter = 0, retry = 0;
-	int i, j, k=0;
+	int i;
 
 	/* We need a local (stable) copy of the address-list. Really, it is not
 	 * such a big deal, if the address-list is not 100% up-to-date.
@@ -242,65 +257,47 @@ next_subflow:
 	    !tcp_sk(mpcb->master_sk)->mptcp->fully_established)
 		goto exit;
 	
-	j=0;
-	mptcp_for_each_bit_set(3, j) {
-		j=1;
-	}
-	//k=0;
 	mptcp_for_each_bit_set(mpcb->rem4_bits, i) {
 		struct mptcp_rem4 *rem;
 		u8 remaining_bits;
 
-		//printf("[debug_j]test\n");
-		i=1;
+		i=flow_cnt+1;
+		/*
+		if(i>1)
+			i=1;
+		*/
 		rem = &mpcb->remaddr4[i];
 		remaining_bits = ~(rem->bitfield) & mptcp_local->loc4_bits;
 
-		if(k > 1){
+		if(flow_cnt > INTERFACE_NUM/2-1){
 			remaining_bits=0;
 		}
 		/* Are there still combinations to handle? */
 		if (remaining_bits) {
-			k++;
-			//printf("[debug_rem]%d, k:%d, rem:%d\n", i, k, remaining_bits);
 			int i = mptcp_find_free_index(~remaining_bits);
-			//printf("[debug_loc]%d\n", i);
-			i=2;
-			/* If a route is not yet available then retry once */
-			//-- wait pahse--//
-			//printf("lane_info:%d, addr:%d\n", mptcp_local->locaddr4[i].lane_info, mptcp_local->locaddr4[i].addr.s_addr);
-			//printf("Finish!:%d\n", meta_sk->__sk_common.time_limit);
-			//printf("cwnd:%d\n", tcp_sk(mpcb->master_sk)->snd_cwnd);
 			tcp_sk(mpcb->master_sk)->snd_cwnd = 1;
 			if(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
 				mptcp_task_save(work);
 				//goto next_subflow;
 			}
-			//while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
-				//msleep(10);
-				printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
-			//}	
-			/*
-			if(mptcp_local->locaddr4[i].lane_info == 1){
-				while(meta_sk->__sk_common.time_limit > jiffies_to_msecs(get_jiffies_64())){
-					msleep(10);
-					printf("wait:%d\n",jiffies_to_msecs(get_jiffies_64()));
-				}	
-			}else{	
-				printf("wait_hitt!!\n");
-			}*/
-			//printf("Finish!:%d\n", jiffies_to_msecs(get_jiffies_64()));
-			//printf("debug:::::::::::%d, num:%d\n", flow_cnt, INTERFACE_NUM);
 			flow_cnt++;
-			if (flow_cnt == INTERFACE_NUM/2 - 1){
+			i=flow_cnt+1;
+			if (flow_cnt > INTERFACE_NUM/2-1){
 				goto next_subflow;
 			}
+			if(rem->addr.s_addr == 0 || mptcp_local->locaddr4[i].addr.s_addr == 0){
+				rem = &mpcb->remaddr4[1];	/*to remove */
+				printf("no_address_stored!!!!!!!i:%d\n", i);
+				store_remaddr_info(mptcp_local->locaddr4[i]);
+				goto next_subflow;
+			}
+			//printf("debug:::::::::::%d, num:%d\n", flow_cnt, INTERFACE_NUM);
+			//printf("lane_info:%d, i:%d, addr:%d, rem:%d\n", mptcp_local->locaddr4[i].lane_info, i, mptcp_local->locaddr4[i].addr.s_addr, rem->addr.s_addr);
 			if (mptcp_init4_subsockets(meta_sk, &mptcp_local->locaddr4[i],
 						   rem) == -ENETUNREACH)
 				retry = rem->retry_bitfield |= (1 << i);
 			goto next_subflow;
 		}
-		//printf("out\n");
 	}
 
 #if IS_ENABLED(CONFIG_IPV6)

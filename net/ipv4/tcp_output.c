@@ -1015,6 +1015,7 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 			      tcp_skb_pcount(skb));
 
 	//printf("test:", tcp_sk(sk)->mpcb->mptw_state);	
+	//printf("test:%d\n", tcp_sk(sk)->snd_ssthresh);	
 
 	//printf("addr:%d, cwnd_transmit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd);
 	if (sk->__sk_common.skc_daddr == 16777482 || sk->__sk_common.skc_daddr == 16777738){
@@ -1058,7 +1059,15 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 	}else{
 		tcp_sk(sk)->snd_cwnd = 1;
 	}
-
+	if(sk->__sk_common.is_path == 1){
+		printf("hit!:%d, %d\n", sk->__sk_common.skc_daddr, sk->__sk_common.path_state);
+		if(sk->__sk_common.lane_info == 1){
+			tcp_sk(sk)->snd_cwnd = 20;
+		}else{
+			tcp_sk(sk)->snd_cwnd = 0;
+		}
+		printf("hit!:%d\n", tcp_sk(sk)->snd_cwnd);
+	}
 	//printf("addr:%d, cnt:%d, cwnd:%d, now%d\n", sk->__sk_common.skc_daddr, cnt, tcp_sk(sk)->snd_cwnd, jiffies_to_msecs(get_jiffies_64()));
 	//tcp_sk(sk)->snd_cwnd = 0;
 

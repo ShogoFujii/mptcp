@@ -433,7 +433,7 @@ void mptcp_task_save(struct work_struct *work)
 
 void mptcp_task_queue()
 {
-	printf("test:::::::::::::::::::::::::%d\n\n\n", work_cnt);
+	//printf("test:::::::::::::::::::::::::%d\n\n\n", work_cnt);
 	create_subflow_worker2(work_save[0]);
 	queue_cnt--;
 }
@@ -447,11 +447,12 @@ void mptcp_cost_calc(struct sock *sk)
 	int alpha=1;
 	int beta=1;
 	int delta=1;
-	int gamma=1;
+	int gamma=10;
 	/* updating base_rtt */
 	if(sk->__sk_common.base_rtt == 0 ||sk->__sk_common.base_rtt > tp->srtt){
 		sk->__sk_common.base_rtt=tp->srtt;
 	}
+	/* calcurating_cost */
 	nu_rtt = tp->srtt - sk->__sk_common.base_rtt;
 	for(j=1; j<beta; j++){
 		nu_rtt = nu_rtt * nu_rtt;
@@ -461,39 +462,50 @@ void mptcp_cost_calc(struct sock *sk)
 		for(j=1; j<delta; j++){
 			thre_cost = thre_cost * thre_cost;
 		}
-		thre_cost = delta * thre_cost;
 	}else{
 		thre_cost=0;
 	}
-	sk->__sk_common.path_cost = alpha * nu_rtt + delta * thre_cost;
-	//printf("debug[lane:%d]::addr:%d, cost:%d\n",sk->__sk_common.lane_info, sk->__sk_common.skc_daddr, sk->__sk_common.path_cost);
-	
-
-	//printf("[judge]%d, %d\n", jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit);
-	/*
-	if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
-		if(queue_cnt>0){
-			printf("hittttttttttttttttt\n");
-			mptcp_task_queue();
-		}
-	}	
-*/
-/*
-	if (sk->__sk_common.lane_info==0){
-		printf("now:%d, now2:%d, limit:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()), sk->__sk_common.time_limit_stamp);
-		printf("debug[lane:%d]::addr:%d, nu_rtt:%d, thre_cost:%d\n",sk->__sk_common.lane_info, sk->__sk_common.skc_daddr, nu_rtt, thre_cost);
+	cost = alpha * nu_rtt + delta * thre_cost;
+	//printf("[debug]cost:%d, ", cost);
+	if (sk->__sk_common.base_cost == 0 || cost < sk->__sk_common.base_cost){
+		if(cost < 0)
+			cost = alpha * nu_rtt;
+		sk->__sk_common.base_cost = cost;
 	}
-*/
+	if (sk->__sk_common.base_cost == 0)
+		sk->__sk_common.base_cost = 100;
+	sk->__sk_common.path_cost = sk->__sk_common.base_cost * (1 + alpha * nu_rtt) + gamma * thre_cost;
 	
 	printf("now:%d, now2:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()));
+	
+	/* judging phase */
+	int tmp=0, lane_tmp=-1;
 	mptcp_for_each_sk(mpcb, sub_sk) {
 		struct tcp_sock *sub_tp = tcp_sk(sub_sk);
-		//if(sub_sk->__sk_common.lane_info == 0){
-		printf("[tcp_reno_cong_avod:i%d::%d]:%d, cost:%d, sport:%5u srtt:%d, base_rtt:%d, cwnd:%d\n", i, sub_sk->__sk_common.lane_info, sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.path_cost, ntohs(sub_tp->inet_conn.icsk_inet.inet_sport), sub_tp->srtt, sub_sk->__sk_common.base_rtt, sub_tp->snd_cwnd);
-		//}
+		if(sub_sk->__sk_common.base_rtt != 0){
+			if(tmp == 0 || tmp > sub_sk->__sk_common.path_cost){
+				tmp = sub_sk->__sk_common.path_cost;
+				lane_tmp = sub_sk->__sk_common.lane_info;
+			}
+		}
+		printf("[tcp_reno_cong_avod:i%d::%d]dst:%d, snd:%d, cost:%d, base_cost:%d srtt:%d, base_rtt:%d, cwnd:%d\n", i, sub_sk->__sk_common.lane_info, sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.skc_rcv_saddr, sub_sk->__sk_common.path_cost, sub_sk->__sk_common.base_cost, sub_tp->srtt, sub_sk->__sk_common.base_rtt, sub_tp->snd_cwnd);
 		i++;
 	}
-		
+	printf("[debug]tmp:%d, tmp_lane:%d\n", tmp, lane_tmp);
+	if(lane_tmp == 1 && sk->__sk_common.is_path != 1){
+		printf("change!!!!!!!!!!!!\n\n\n\n");
+		mptcp_for_each_sk(mpcb, sub_sk) {
+			sub_sk->__sk_common.is_path=1;
+			if(sub_sk->__sk_common.lane_info == 1){
+				printf("[debug]daddr:%d, %d\n", sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.lane_info);
+				sub_sk->__sk_common.path_state = 1;
+			}else{
+				printf("[debug]daddr:%d, %d\n", sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.lane_info);
+				sub_sk->__sk_common.path_state = 0;
+			}
+		}
+	}
+
 }
 
 /*
@@ -512,7 +524,7 @@ void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 		//printf("tcp_is_cwnd_limited\n");
 		return;
 	}
-
+	//printf("[tcp_cong]ssthresh:%d\n", tp->snd_ssthresh);
 	/* In "safe" area, increase. */
 	if (tp->snd_cwnd <= tp->snd_ssthresh){
 		//printf("tcp_slow_start\n");

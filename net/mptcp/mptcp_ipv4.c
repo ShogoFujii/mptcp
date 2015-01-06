@@ -47,6 +47,21 @@ int sysctl_tcp_max_ssthresh = 0;
 //int judge_cnt=0, thresh=-1;
 int d_cnt=0;
 
+struct remaddr_info {
+	struct mptcp_loc4 locaddr4[MPTCP_MAX_ADDR];
+	u8 remain_num;
+};
+
+struct mptcp_loc_addr {
+	struct mptcp_loc4 locaddr4[MPTCP_MAX_ADDR];
+	u8 loc4_bits;
+	u8 next_v4_index;
+
+	struct mptcp_loc6 locaddr6[MPTCP_MAX_ADDR];
+	u8 loc6_bits;
+	u8 next_v6_index;
+};
+
 u32 mptcp_v4_get_nonce(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport,
 		       u32 seq)
 {
@@ -266,12 +281,24 @@ int mptcp_v4_rem_raddress(struct mptcp_cb *mpcb, u8 id)
  * Returns -1 if there is no space anymore to store an additional
  * address
  */
+struct mptcp_fm_ns2 {
+	struct mptcp_loc_addr __rcu *local;
+	spinlock_t local_lock; /* Protecting the above pointer */
+	struct list_head events;
+	struct delayed_work address_worker;
+
+	struct net *net;
+};
+static struct mptcp_fm_ns *fm_get_ns2(struct net *net)
+{
+	return (struct mptcp_fm_ns *)net->mptcp.path_managers[MPTCP_PM_FULLMESH];
+}
+
 int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 			  __be16 port, u8 id)
 {
 	int i;
 	struct mptcp_rem4 *rem4;
-	
 	mptcp_for_each_bit_set(mpcb->rem4_bits, i) {
 		//i = 0;
 		rem4 = &mpcb->remaddr4[i];
@@ -325,6 +352,25 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	rem4->id = id;
 	mpcb->list_rcvd = 1;
 	mpcb->rem4_bits |= (1 << i);
+	//if(addr->s_addr == 16908554 || addr->s_addr == 16908810)
+	//	printf("hitttttttttt!!!%d\n\n", addr->s_addr);
+	struct remaddr_info rem_info = get_remaddr_info();
+	
+	if(rem_info.remain_num){
+		int tar_num = rem_info.remain_num-1;
+		printf("hitttttttttt!!!%d:%d, %d:%d\n\n", addr->s_addr, rem4->lane_child, rem_info.locaddr4[tar_num].addr.s_addr, rem_info.locaddr4[tar_num].lane_child);
+		struct sock *meta_sk = mpcb->meta_sk;
+		mptcp_init4_subsockets(meta_sk, &rem_info.locaddr4[tar_num], rem4);
+		rem4->retry_bitfield &= ~(1 << tar_num);
+		//rem_info.locaddr4[0].addr.s_addr
+	//	if (mptcp_init4_subsockets(meta_sk, &rem_info.loc_addr[rem_info.remain_num], rem4) == -ENETUNREACH)
+	}
+	/*	
+	if(rem_info.remain_num){
+		//struct mptcp_loc4 *rem_info_loc4 = &rem_info->locaddr4[0];
+		printf("[add_addr]%d\n", rem_info.locaddr4[0].addr.s_addr);
+		printf("[add_addr]%d\n\n", rem_info.remain_num);
+	}*/
 
 	//printf("[mptcp_ipv4][2]rem4->id:%d, id:%d\n", rem4->id, id);
 	//printf("[mptcp_ipv4][2]rem4->s_addr:%d, addr->s_addr:%d\n", rem4->addr.s_addr, addr->s_addr);

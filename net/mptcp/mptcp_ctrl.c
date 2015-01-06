@@ -1330,7 +1330,7 @@ void mptcp_init_limit_set(struct sock *sk)
 					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
 					sk->__sk_common.time_limit = thresh;
 					sk->__sk_common.time_limit_stamp = tcp_time_stamp + LANE_THRESH/4;
-					printf("now:%d, limit_stamp:%d", tcp_time_stamp, sk->__sk_common.time_limit_stamp);
+					printf("now:%d, limit_stamp:%d\n", tcp_time_stamp, sk->__sk_common.time_limit_stamp);
 				}
 				printf("[sk_check_i:%d]addr:%d, lane_info:%d, lane_child:%d, limit:%d, limit_stamp%d\n", i, sk->__sk_common.skc_daddr, sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit, sk->__sk_common.time_limit_stamp);
 				cnt2++;
