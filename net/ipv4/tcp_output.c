@@ -1030,6 +1030,7 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 		tcp_sk(sk)->snd_cwnd = 1;
 	}
 	*/
+	//test
 	if(sk->__sk_common.is_path == 1){
 		printf("hit!:%d, %d\n", sk->__sk_common.skc_daddr, sk->__sk_common.path_state);
 		if(sk->__sk_common.lane_info == 1){
