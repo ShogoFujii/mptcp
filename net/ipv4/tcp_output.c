@@ -1018,47 +1018,18 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 	//printf("test:%d\n", tcp_sk(sk)->snd_ssthresh);	
 
 	//printf("addr:%d, cwnd_transmit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd);
+	/*
 	if (sk->__sk_common.skc_daddr == 16777482 || sk->__sk_common.skc_daddr == 16777738){
-	//printf("addr:%d, cwnd_transmit:%d, limit:%d\n",sk->__sk_common.skc_daddr, tcp_sk(sk)->snd_cwnd, sk->__sk_common.time_limit);
-	//rcu_read_lock();
-	//mptcp_local = rcu_dereference(fm_ns->local);
 		cnt++;
 		if(sk->__sk_common.time_limit != 0){
-			//printf("[judge]limit:%d, now:%d\n", sk->__sk_common.time_limit, jiffies_to_msecs(get_jiffies_64()));
 			if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
-				//printf("over!!\n");
-				//printf("daddr:%d\n", sk->__sk_common.skc_daddr);
-				//printf("[judge]ldaddr:%d, imit:%d, now:%d\n", sk->__sk_common.skc_daddr, sk->__sk_common.time_limit, jiffies_to_msecs(get_jiffies_64()));
-				//printf("[stop]%d\n", tcp_sk(sk)->snd_cwnd);
-	
-				//tcp_sk(sk)->snd_cwnd = 0;
 				struct sock *sub_sk;
-				/*
-				mptcp_for_each_sk(mpcb, sub_sk){
-					//printf ("[mptcp_v4_join_request]testtttttttttt:%d\n", i);
-					struct tcp_sock *sub_tp = tcp_sk(sub_sk);
-				}*/
-				//return net_xmit_eval(1);
 			}
 		}
-		//if(cnt > 4)
-			//tcp_sk(sk)->snd_cwnd = 0;
-			//return net_xmit_eval(1);	
-/*
-		if(sk->__sk_common.skc_state == TCP_ESTABLISHED)
-		{
-			//printf("hit!:%d, %d\n", cnt, jiffies_to_msecs(get_jiffies_64()));
-			//printf("hit!:%d, %d\n", cnt, jiffies_to_msecs(get_jiffies_64()));
-			if(cnt < 1){
-				tcp_sk(sk)->snd_cwnd = 1;
-			}else{
-				tcp_sk(sk)->snd_cwnd = 0;
-			}
-		}
-*/
 	}else{
 		tcp_sk(sk)->snd_cwnd = 1;
 	}
+	*/
 	if(sk->__sk_common.is_path == 1){
 		printf("hit!:%d, %d\n", sk->__sk_common.skc_daddr, sk->__sk_common.path_state);
 		if(sk->__sk_common.lane_info == 1){
@@ -1068,11 +1039,6 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 		}
 		printf("hit!:%d\n", tcp_sk(sk)->snd_cwnd);
 	}
-	//printf("addr:%d, cnt:%d, cwnd:%d, now%d\n", sk->__sk_common.skc_daddr, cnt, tcp_sk(sk)->snd_cwnd, jiffies_to_msecs(get_jiffies_64()));
-	//tcp_sk(sk)->snd_cwnd = 0;
-
-
-
 
 	err = icsk->icsk_af_ops->queue_xmit(skb, &inet->cork.fl);
 	if (likely(err <= 0))
