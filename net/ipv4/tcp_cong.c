@@ -23,6 +23,10 @@ int base_rtt=0;
 struct work_struct *work_save[INTERFACE_NUM], *last_work;
 int work_cnt=0, queue_cnt=0;
 
+/* 0->complete_pair, 1->mptcp_simple_lane, 2->mptcp_cost */
+//int config_mptcp_plug=MPTCP_PLUGIN_CONFIG;
+int mptcp_plugin_config=1;
+
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
 
@@ -80,56 +84,6 @@ void tcp_unregister_congestion_control(struct tcp_congestion_ops *ca)
 	spin_unlock(&tcp_cong_list_lock);
 }
 EXPORT_SYMBOL_GPL(tcp_unregister_congestion_control);
-/*
-void tcp_init_lane_set(struct sock *sk)
-{
-
-	int i=0, addr[INTERFACE_NUM], lane[INTERFACE_NUM], child[INTERFACE_NUM];
-	char target[256], p_lane[64], p_child[64], *test, *test2, *test3;
-	//printf("[judge]%d\n", judge_cnt);
-	strcpy(target, ETH_LIST);
-	strcpy(p_lane, LANE_INFO);
-	strcpy(p_child, CHILD_INFO);
-
-	if(judge_cnt < INTERFACE_NUM){
-		test=strtok(target, ",");		
-		while(test != NULL){
-			addr[i]=atoi(test);
-			i++;
-			test=strtok(NULL, ",");
-		}
-		test="";
-		i=0;
-		test=strtok(p_lane, ",");		
-		while(test != NULL){
-			lane[i]=atoi(test);
-			i++;
-			test=strtok(NULL, ",");
-		}
-		test="";
-		i=0;
-		test=strtok(p_child, ",");		
-		while(test != NULL){
-			child[i]=atoi(test);
-			i++;
-			test=strtok(NULL, ",");
-		}
-	}
-	if(judge_cnt < INTERFACE_NUM){
-		for(i=0;i < INTERFACE_NUM;i++){
-			if(sk->__sk_common.skc_daddr == addr[i] || sk->__sk_common.skc_rcv_saddr == addr[i]){
-				sk->__sk_common.lane_info = lane[i];
-				sk->__sk_common.lane_child = child[i];
-				if(thresh<0)
-					thresh = jiffies_to_msecs(get_jiffies_64()) + LANE_THRESH;
-				sk->__sk_common.time_limit = thresh;
-				printf("[check_i:%d]addr:%d, lane_info:%d, lane_child:%d, time_limit:%d\n", i, addr[i], sk->__sk_common.lane_info, sk->__sk_common.lane_child, sk->__sk_common.time_limit);
-				judge_cnt++;
-			}
-		}
-	}
-}
-*/
 
 /* Assign choice of congestion control. */
 void tcp_init_congestion_control(struct sock *sk)
@@ -392,18 +346,6 @@ void tcp_slow_start(struct tcp_sock *tp)
 		delta++;
 	}
 	tp->snd_cwnd = min(snd_cwnd + delta, tp->snd_cwnd_clamp);
-	/*
-	if(tp->inet_conn.icsk_inet.sk.__sk_common.skc_daddr == 16843274){
-		printf("lane_info:%d", tp->inet_conn.icsk_inet.sk.__sk_common.skc_daddr);
-		//tp->snd_cwnd = 0;
-		//printf("cwnd_long:%d\n", tp->snd_cwnd);
-	}else{
-		//tp->snd_cwnd = 0;
-		//printf("cwnd_short:%d\n", tp->snd_cwnd);
-	}*/
-
-	//tp->snd_cwnd = 1;
-	//printf("cwnd:%d\n", tp->snd_cwnd);
 }
 EXPORT_SYMBOL_GPL(tcp_slow_start);
 
@@ -428,7 +370,6 @@ void mptcp_task_save(struct work_struct *work)
 		work_cnt++;
 		queue_cnt++;
 	}
-	//printf("test:::::::::::::::::::::::::%d\n", work_cnt);
 }
 
 void mptcp_task_queue()
@@ -476,7 +417,7 @@ void mptcp_cost_calc(struct sock *sk)
 		sk->__sk_common.base_cost = 100;
 	sk->__sk_common.path_cost = sk->__sk_common.base_cost * (1 + alpha * nu_rtt) + gamma * thre_cost;
 	
-	printf("now:%d, now2:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()));
+	//printf("now:%d, now2:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()));
 	
 	/* judging phase */
 	int tmp=0, lane_tmp=-1;
@@ -505,9 +446,26 @@ void mptcp_cost_calc(struct sock *sk)
 			}
 		}
 	}
-
 }
 
+void mptcp_judge_limit(struct sock *sk)
+{
+	struct tcp_sock *tp = tcp_sk(sk);
+	struct mptcp_cb *mpcb = tcp_sk(sk)->mpcb;
+	struct sock *sub_sk;
+	if (sk->__sk_common.lane_info == 0){
+		if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
+			mptcp_for_each_sk(mpcb, sub_sk) {
+				sub_sk->__sk_common.is_path = 1;
+				if(sub_sk->__sk_common.lane_info){
+					sub_sk->__sk_common.path_state = 1;
+				}else{
+					sub_sk->__sk_common.path_state = 0;
+				}					
+			}
+		}
+	}
+}
 /*
  * TCP Reno congestion control
  * This is special case used for fallback as well.
@@ -518,10 +476,15 @@ void mptcp_cost_calc(struct sock *sk)
 void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
-	//if(sk->__sk_common.lane_info == 0)
+	/* mptcp_mode config.
+	 * 0->complete_pair, 1->mptcp_simple_lane, 2->mptcp_cost */
+	if(mptcp_plugin_config == 1){
+		mptcp_judge_limit(sk);
+	}else if(mptcp_plugin_config == 2){
 		mptcp_cost_calc(sk);
+	}
+
 	if (!tcp_is_cwnd_limited(sk, in_flight)){
-		//printf("tcp_is_cwnd_limited\n");
 		return;
 	}
 	//printf("[tcp_cong]ssthresh:%d\n", tp->snd_ssthresh);

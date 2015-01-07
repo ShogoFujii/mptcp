@@ -57,6 +57,8 @@
  * When changing, see the bitfield below in mptcp_loc4/6. */
 #define MPTCP_MAX_ADDR	8
 
+#define MPTCP_PLUGIN_CONFIG	0 /*0->complete_pair, 1->mptcp_simple_lane, 2->mptcp_cost */
+
 #define MPTCP_SUBFLOW_RETRY_DELAY	1000
 
 struct mptcp_loc4 {
