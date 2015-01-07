@@ -420,6 +420,18 @@ def build_dce_kernel_examples(module, bld):
                        target='bin/dce-iperf-mptcp',
                        source=['example/dce-iperf-mptcp.cc'])
 
+    module.add_example(needed = ['core', 'network', 'dce', 'point-to-point', 'mobility', 'netanim'],
+                       target='bin/dce-iperf-mptcp_experiment',
+                       source=['example/dce-iperf-mptcp_experiment.cc'])
+
+    module.add_example(needed = ['core', 'network', 'dce', 'point-to-point', 'mobility', 'netanim'],
+                       target='bin/dce-iperf-mptcp_sub2',
+                       source=['example/dce-iperf-mptcp_sub2.cc'])
+
+    module.add_example(needed = ['core', 'network', 'dce', 'point-to-point', 'mobility', 'netanim'],
+                       target='bin/dce-iperf-mptcp_back2',
+                       source=['example/dce-iperf-mptcp_back2.cc'])
+
     module.add_example(needed = ['core', 'network', 'dce', 'point-to-point', 'mobility', 'applications'],
                        target='bin/dce-cradle-mptcp',
                        source=['example/dce-cradle-mptcp.cc'])

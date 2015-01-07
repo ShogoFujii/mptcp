@@ -25,7 +25,7 @@ int work_cnt=0, queue_cnt=0;
 
 /* 0->complete_pair, 1->mptcp_simple_lane, 2->mptcp_cost */
 //int config_mptcp_plug=MPTCP_PLUGIN_CONFIG;
-int mptcp_plugin_config=1;
+int mptcp_plugin_config=0;
 
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
@@ -453,7 +453,7 @@ void mptcp_judge_limit(struct sock *sk)
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct mptcp_cb *mpcb = tcp_sk(sk)->mpcb;
 	struct sock *sub_sk;
-	if (sk->__sk_common.lane_info == 0){
+	if (sk->__sk_common.lane_info == 0 || sk->__sk_common.is_path == 1){
 		if(sk->__sk_common.time_limit < jiffies_to_msecs(get_jiffies_64())){
 			mptcp_for_each_sk(mpcb, sub_sk) {
 				sub_sk->__sk_common.is_path = 1;
@@ -487,15 +487,12 @@ void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 	if (!tcp_is_cwnd_limited(sk, in_flight)){
 		return;
 	}
-	//printf("[tcp_cong]ssthresh:%d\n", tp->snd_ssthresh);
 	/* In "safe" area, increase. */
 	if (tp->snd_cwnd <= tp->snd_ssthresh){
-		//printf("tcp_slow_start\n");
 		tcp_slow_start(tp);
 	}
 	/* In dangerous area, increase slowly. */
 	else{
-		//printf("tcp_cong_avoid_ai\n");
 		tcp_cong_avoid_ai(tp, tp->snd_cwnd);
 	}
 }
