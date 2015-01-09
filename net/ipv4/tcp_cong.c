@@ -424,7 +424,11 @@ void mptcp_cost_calc(struct sock *sk)
 	mptcp_for_each_sk(mpcb, sub_sk) {
 		struct tcp_sock *sub_tp = tcp_sk(sub_sk);
 		if(sub_sk->__sk_common.base_rtt != 0){
-			if(tmp == 0 || tmp > sub_sk->__sk_common.path_cost){
+			if(tmp == 0){
+				tmp = sub_sk->__sk_common.path_cost;
+				lane_tmp = sub_sk->__sk_common.lane_info;
+			}
+			if(tmp > sub_sk->__sk_common.path_cost){
 				tmp = sub_sk->__sk_common.path_cost;
 				lane_tmp = sub_sk->__sk_common.lane_info;
 			}
@@ -432,19 +436,19 @@ void mptcp_cost_calc(struct sock *sk)
 		printf("[tcp_reno_cong_avod:i%d::%d]dst:%d, snd:%d, cost:%d, base_cost:%d srtt:%d, base_rtt:%d, cwnd:%d\n", i, sub_sk->__sk_common.lane_info, sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.skc_rcv_saddr, sub_sk->__sk_common.path_cost, sub_sk->__sk_common.base_cost, sub_tp->srtt, sub_sk->__sk_common.base_rtt, sub_tp->snd_cwnd);
 		i++;
 	}
-	printf("[debug]tmp:%d, tmp_lane:%d\n", tmp, lane_tmp);
+	printf("\n");
 	if(lane_tmp == 1 && sk->__sk_common.is_path != 1){
 		printf("change!!!!!!!!!!!!\n\n\n\n");
 		mptcp_for_each_sk(mpcb, sub_sk) {
 			sub_sk->__sk_common.is_path=1;
 			if(sub_sk->__sk_common.lane_info == 1){
-				printf("[debug]daddr:%d, %d\n", sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.lane_info);
 				sub_sk->__sk_common.path_state = 1;
 			}else{
-				printf("[debug]daddr:%d, %d\n", sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.lane_info);
+				//printf("[debug]daddr:%d, %d\n", sub_sk->__sk_common.skc_daddr, sub_sk->__sk_common.lane_info);
 				sub_sk->__sk_common.path_state = 0;
 			}
 		}
+		printf("[cost_calc]lane:%d, is_path:%d, %d, %d\n", sk->__sk_common.lane_info, sk->__sk_common.is_path, sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 	}
 }
 

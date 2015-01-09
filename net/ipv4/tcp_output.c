@@ -1013,12 +1013,21 @@ int tcp_transmit_skb(struct sock *sk, struct sk_buff *skb, int clone_it,
 	if (after(tcb->end_seq, tp->snd_nxt) || tcb->seq == tcb->end_seq)
 		TCP_ADD_STATS(sock_net(sk), TCP_MIB_OUTSEGS,
 			      tcp_skb_pcount(skb));
-
+/*
+	if(sk->__sk_common.lane_info == 0)
+		printf("[transmit_skb]lane:%d, is_path:%d, %d, %d\n", sk->__sk_common.lane_info, sk->__sk_common.is_path, sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
+*/
 	if(sk->__sk_common.is_path == 1){
+		//printf("[transmit_skb]lane:%d, is_path:%d, %d, %d\n", sk->__sk_common.lane_info, sk->__sk_common.is_path, sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 		if(sk->__sk_common.lane_info == 0){
 			tcp_sk(sk)->snd_cwnd = 0;
 		}
-		printf("hit!:%d\n", tcp_sk(sk)->snd_cwnd);
+		//printf("hit!:%d\n", tcp_sk(sk)->snd_cwnd);
+	}
+	else{	
+		if(sk->__sk_common.lane_info == 1){
+			tcp_sk(sk)->snd_cwnd = 1;
+		}
 	}
 
 	err = icsk->icsk_af_ops->queue_xmit(skb, &inet->cork.fl);

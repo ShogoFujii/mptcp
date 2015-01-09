@@ -318,34 +318,62 @@ void socketTraffic(multimap<int, string> &ip_set, uint32_t byte, double start, d
 		i++;
 	}
 }
-void socketTraffic2(map<int, string> &ip_set, uint32_t byte, double start, double end, NodeContainer nodes){
-	uint32_t size = byte;
-		if (byte != 0){
-			size = byte * 1000 - 1502;
+
+int* poisson_pros(int sec, int end_time, int freq, int *poisson_size){
+	int total_queue=0, queue=0;
+	int random;
+	int *pre_set;
+	pre_set = new int[5000];
+	int k=0;
+	srand((unsigned) time(NULL));
+	while(sec < end_time){
+		queue = 0;
+		random = rand() % 100 + 1;
+		if(random < freq){
+			queue++;
 		}
-	int tasks = ip_set.size();
-	ApplicationContainer apps[tasks], sinkApps[tasks];
-	map<int, string>::iterator it = ip_set.begin();
-	string sock_factory = "ns3::LinuxTcpSocketFactory";
-	int i = 0;
-	while(it != ip_set.end()){
-		//BulkSendHelper bulk[i];
-		//cout << "IP : " << (*it).second << endl;
-		BulkSendHelper bulk = BulkSendHelper (sock_factory, InetSocketAddress (string2char((*it).second), 5001));
-		bulk.SetAttribute ("MaxBytes", UintegerValue (size));
-		apps[0] = bulk.Install (nodes.Get((*it).first));
-
-		apps[0].Start(Seconds(start));
-		apps[0].Stop(Seconds(end));
-
-		PacketSinkHelper sink = PacketSinkHelper (sock_factory, InetSocketAddress (Ipv4Address::GetAny (), 5001));
-		int ser = host_detect(string2char((*it).second));
-		sinkApps[0] = sink.Install (nodes.Get(ser));
-		sinkApps[0].Start (Seconds (start));
-		sinkApps[0].Stop (Seconds (end));
-		++it;
-		i++;
+		if(queue != 0){
+			pre_set[k]=sec;
+			//cout << sec << "[msec]" << queue << endl;
+			k++;
+		}
+		sec=sec+10;
+		//cout << sec << endl;
+		total_queue += queue;
 	}
+	int *poisson_set;
+	poisson_set = new int[k];
+	for(int i=0;i < k;i++){
+		poisson_set[i]=pre_set[i];
+		cout << i << " : " << poisson_set[i] << endl;
+	}
+	*poisson_size = k;
+	delete[] pre_set;
+	return poisson_set;
+}
+
+int* constant_pros(int sec, int end_time, int freq, int *poisson_size){
+	int total_queue=0, queue=0;
+	int random;
+	int *pre_set;
+	pre_set = new int[5000];
+	int k=0;
+	int interval = 10 * freq;
+	srand((unsigned) time(NULL));
+	while(sec < end_time){
+		pre_set[k]=sec;
+		k++;
+		sec=sec+interval;
+	}
+	int *poisson_set;
+	poisson_set = new int[k];
+	for(int i=0;i < k;i++){
+		poisson_set[i]=pre_set[i];
+		cout << i << " : " << poisson_set[i] << endl;
+	}
+	*poisson_size = k;
+	delete[] pre_set;
+	return poisson_set;
 }
 void setPos (Ptr<Node> n, int x, int y, int z)
 {
@@ -358,13 +386,20 @@ void setPos (Ptr<Node> n, int x, int y, int z)
 int main (int argc, char *argv[])
 {
   uint32_t nRtrs = 3;
+  uint32_t s_size = 70; 
+  uint32_t nDir_name = 1;
+  double end = 8.0;
+
   CommandLine cmd;
   cmd.AddValue ("nRtrs", "Number of routers. Default 2", nRtrs);
+  cmd.AddValue ("nDir", "the place of pcap files", nDir_name);
+  cmd.AddValue ("s_size", "Traffic size in short flow", s_size);
   cmd.Parse (argc, argv);
 
-  NodeContainer nodes, routers;
+  NodeContainer nodes, routers, routers2;
   nodes.Create (4);
   routers.Create (nRtrs);
+  routers2.Create (nRtrs);
 
   DceManagerHelper dceManager;
   dceManager.SetTaskManagerAttribute ("FiberManagerType",
@@ -375,23 +410,26 @@ int main (int argc, char *argv[])
   LinuxStackHelper stack;
   stack.Install (nodes);
   stack.Install (routers);
+  stack.Install (routers2);
 
   dceManager.Install (nodes);
   dceManager.Install (routers);
+  dceManager.Install (routers2);
 
   PointToPointHelper pointToPoint;
-  NetDeviceContainer devices1, devices2, devices3, devices4;
-  Ipv4AddressHelper address1, address2, address3, address4;
+  NetDeviceContainer devices1, devices2, devices3, devices4, devices5;
+  Ipv4AddressHelper address1, address2, address3, address4, address5;
   std::ostringstream cmd_oss;
   address1.SetBase ("10.1.0.0", "255.255.255.0");
   address2.SetBase ("10.2.0.0", "255.255.255.0");
   address3.SetBase ("10.3.0.0", "255.255.255.0");
   address4.SetBase ("10.4.0.0", "255.255.255.0");
+  address5.SetBase ("10.5.0.0", "255.255.255.0");
   for (uint32_t i = 0; i < nRtrs; i++)
     {
       // Left link
-      pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("5Mbps"));
-      pointToPoint.SetChannelAttribute ("Delay", StringValue ("10ms"));
+      pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+      pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ns"));
       devices1 = pointToPoint.Install (nodes.Get (0), routers.Get (i));
       devices3 = pointToPoint.Install (nodes.Get (2), routers.Get (i));
       // Assign ip addresses
@@ -426,11 +464,34 @@ int main (int argc, char *argv[])
       cmd_oss << "route add 10.3.0.0/16 via " << if3.GetAddress (1, 0) << " dev sim2";
       LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
 
+      // middle link
+      pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+      pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ns"));
+      devices5 = pointToPoint.Install (routers.Get (i), routers2.Get (i));
+      // Assign ip addresses
+      Ipv4InterfaceContainer if5 = address5.Assign (devices5);
+      address5.NewNetwork ();
+      // setup ip routes
+      
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.2.0.0/16 via " << if5.GetAddress (1, 0) ;
+      LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.4.0.0/16 via " << if5.GetAddress (1, 0) ;
+      LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.1), cmd_oss.str ().c_str ());
+
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.1.0.0/16 via " << if5.GetAddress (0, 0) ;
+      LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.3.0.0/16 via " << if5.GetAddress (0, 0) ;
+      LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
+
       // Right link
       pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
       pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ns"));
-      devices2 = pointToPoint.Install (nodes.Get (1), routers.Get (i));
-      devices4 = pointToPoint.Install (nodes.Get (3), routers.Get (i));
+      devices2 = pointToPoint.Install (nodes.Get (1), routers2.Get (i));
+      devices4 = pointToPoint.Install (nodes.Get (3), routers2.Get (i));
       // Assign ip addresses
       Ipv4InterfaceContainer if2 = address2.Assign (devices2);
       Ipv4InterfaceContainer if4 = address4.Assign (devices4);
@@ -448,7 +509,7 @@ int main (int argc, char *argv[])
       LinuxStackHelper::RunIp (nodes.Get (1), Seconds (0.1), cmd_oss.str ().c_str ());
       cmd_oss.str ("");
       cmd_oss << "route add 10.2.0.0/16 via " << if2.GetAddress (1, 0) << " dev sim1";
-      LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
+      LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
 
       cmd_oss.str ("");
       cmd_oss << "rule add from " << if4.GetAddress (0, 0) << " table " << (i+1);
@@ -461,9 +522,10 @@ int main (int argc, char *argv[])
       LinuxStackHelper::RunIp (nodes.Get (3), Seconds (0.1), cmd_oss.str ().c_str ());
       cmd_oss.str ("");
       cmd_oss << "route add 10.4.0.0/16 via " << if4.GetAddress (1, 0) << " dev sim3";
-      LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
+      LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
 
-      setPos (routers.Get (i), 50, i * 20, 0);
+      setPos (routers.Get (i), 30, i * 20, 0);
+      setPos (routers2.Get (i), 70, i * 20, 0);
     }
 
   // default route
@@ -504,8 +566,8 @@ int main (int argc, char *argv[])
   dce.AddArgument ("100");
 
   apps = dce.Install (nodes.Get (0));
-  //apps.Start (Seconds (5.0));
-  //apps.Stop (Seconds (200));
+  //apps.Start (Seconds (4.5));
+  //apps.Stop (Seconds (10));
 
   // Launch iperf server on node 1
   dce.SetBinary ("iperf");
@@ -514,8 +576,10 @@ int main (int argc, char *argv[])
   dce.AddArgument ("-s");
   dce.AddArgument ("-P");
   dce.AddArgument ("1");
-
-  pointToPoint.EnablePcapAll ("./pcap/iperf-mptcp_expe/iperf-mptcp_expe", false);
+  apps = dce.Install (nodes.Get (1));
+  
+  string pcap_place = "./pcap/iperf-mptcp_expe/" + int2string(nDir_name)  + "/iperf-mptcp";
+  pointToPoint.EnablePcapAll (pcap_place, false);
 
   //apps.Start (Seconds (4));
 
@@ -523,15 +587,20 @@ int main (int argc, char *argv[])
   adrs_set.insert(map<int, string>::value_type(0, "10.2.0.1"));
   adrs_set2.insert(map<int, string>::value_type(2, "10.4.0.1"));
   //show_multimap(adrs_set);
-  //socketTraffic(adrs_set, 0, 4.5, 7.0, nodes);
-  socketTraffic(adrs_set2, 0, 4.5, 7.0, nodes);
+  int poisson_size, constant_size;
+  //int *poisson_set = poisson_pros(5000, 9000, 5, &poisson_size);
+  int *constant_set = constant_pros(5000, 7000, 20, &constant_size);
+  for(int i=0; i<constant_size;i++){
+    socketTraffic(adrs_set2, s_size, (double) constant_set[i] / 1000, end, nodes);
+  }
+  socketTraffic(adrs_set, 0, 4.0, end, nodes);
   
   setPos (nodes.Get (0), 0, 20 * (nRtrs - 1) / 2 + 10, 0);
   setPos (nodes.Get (1), 100, 20 * (nRtrs - 1) / 2 + 10, 0);
   setPos (nodes.Get (2), 0, 20 * (nRtrs - 1) / 2 - 10, 0);
   setPos (nodes.Get (3), 100, 20 * (nRtrs - 1) / 2 - 10, 0);
 
-  Simulator::Stop (Seconds (7.0));
+  Simulator::Stop (Seconds (end));
   AnimationInterface anim("./xml/dce-iperf-mptcp_expe.xml");
   Simulator::Run ();
   Simulator::Destroy ();
