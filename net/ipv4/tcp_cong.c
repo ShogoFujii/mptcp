@@ -25,7 +25,7 @@ int work_cnt=0, queue_cnt=0;
 
 /* 0->complete_pair, 1->mptcp_simple_lane, 2->mptcp_cost */
 //int config_mptcp_plug=MPTCP_PLUGIN_CONFIG;
-int mptcp_plugin_config=0;
+int mptcp_plugin_config=2;
 
 static DEFINE_SPINLOCK(tcp_cong_list_lock);
 static LIST_HEAD(tcp_cong_list);
@@ -484,8 +484,10 @@ void tcp_reno_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 	 * 0->complete_pair, 1->mptcp_simple_lane, 2->mptcp_cost */
 	if(mptcp_plugin_config == 1){
 		mptcp_judge_limit(sk);
+		printf("simple_lane\n");
 	}else if(mptcp_plugin_config == 2){
 		mptcp_cost_calc(sk);
+		printf("cost_base\n");
 	}
 
 	if (!tcp_is_cwnd_limited(sk, in_flight)){

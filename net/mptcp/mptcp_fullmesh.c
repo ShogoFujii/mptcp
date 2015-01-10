@@ -76,8 +76,10 @@ struct remaddr_info get_remaddr_info(void)
 
 void store_remaddr_info(struct mptcp_loc4 loc4)
 {
-	rem_info.locaddr4[rem_info.remain_num] = loc4;
-	rem_info.remain_num++;
+	if(loc4.addr.s_addr){
+		rem_info.locaddr4[rem_info.remain_num] = loc4;
+		rem_info.remain_num++;
+	}
 }
 static struct mptcp_fm_ns *fm_get_ns(struct net *net)
 {

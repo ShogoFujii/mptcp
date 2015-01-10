@@ -397,7 +397,7 @@ int main (int argc, char *argv[])
   cmd.Parse (argc, argv);
 
   NodeContainer nodes, routers, routers2;
-  nodes.Create (4);
+  nodes.Create (6);
   routers.Create (nRtrs);
   routers2.Create (nRtrs);
 
@@ -417,14 +417,16 @@ int main (int argc, char *argv[])
   dceManager.Install (routers2);
 
   PointToPointHelper pointToPoint;
-  NetDeviceContainer devices1, devices2, devices3, devices4, devices5;
-  Ipv4AddressHelper address1, address2, address3, address4, address5;
+  NetDeviceContainer devices1, devices2, devices3, devices4, devices5, devices6, devices7;
+  Ipv4AddressHelper address1, address2, address3, address4, address5, address6, address7;
   std::ostringstream cmd_oss;
   address1.SetBase ("10.1.0.0", "255.255.255.0");
   address2.SetBase ("10.2.0.0", "255.255.255.0");
   address3.SetBase ("10.3.0.0", "255.255.255.0");
   address4.SetBase ("10.4.0.0", "255.255.255.0");
   address5.SetBase ("10.5.0.0", "255.255.255.0");
+  address6.SetBase ("10.6.0.0", "255.255.255.0");
+  address7.SetBase ("10.7.0.0", "255.255.255.0");
   for (uint32_t i = 0; i < nRtrs; i++)
     {
       // Left link
@@ -432,11 +434,14 @@ int main (int argc, char *argv[])
       pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ns"));
       devices1 = pointToPoint.Install (nodes.Get (0), routers.Get (i));
       devices3 = pointToPoint.Install (nodes.Get (2), routers.Get (i));
+      devices5 = pointToPoint.Install (nodes.Get (4), routers.Get (i));
       // Assign ip addresses
       Ipv4InterfaceContainer if1 = address1.Assign (devices1);
       Ipv4InterfaceContainer if3 = address3.Assign (devices3);
+      Ipv4InterfaceContainer if5 = address5.Assign (devices5);
       address1.NewNetwork ();
       address3.NewNetwork ();
+      address5.NewNetwork ();
       // setup ip routes
       cmd_oss.str ("");
       cmd_oss << "rule add from " << if1.GetAddress (0, 0) << " table " << (i+1);
@@ -464,27 +469,45 @@ int main (int argc, char *argv[])
       cmd_oss << "route add 10.3.0.0/16 via " << if3.GetAddress (1, 0) << " dev sim2";
       LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
 
+      cmd_oss.str ("");
+      cmd_oss << "rule add from " << if5.GetAddress (0, 0) << " table " << (i+1);
+      LinuxStackHelper::RunIp (nodes.Get (4), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.5." << i << ".0/24 dev sim" << i << " scope link table " << (i+1);
+      LinuxStackHelper::RunIp (nodes.Get (4), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add default via " << if5.GetAddress (1, 0) << " dev sim" << i << " table " << (i+1);
+      LinuxStackHelper::RunIp (nodes.Get (4), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.5.0.0/16 via " << if5.GetAddress (1, 0) << " dev sim4";
+      LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
       // middle link
-      pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("100Mbps"));
+      pointToPoint.SetDeviceAttribute ("DataRate", StringValue ("200Mbps"));
       pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ns"));
-      devices5 = pointToPoint.Install (routers.Get (i), routers2.Get (i));
+      devices7 = pointToPoint.Install (routers.Get (i), routers2.Get (i));
       // Assign ip addresses
-      Ipv4InterfaceContainer if5 = address5.Assign (devices5);
-      address5.NewNetwork ();
+      Ipv4InterfaceContainer if7 = address7.Assign (devices7);
+      address7.NewNetwork ();
       // setup ip routes
       
       cmd_oss.str ("");
-      cmd_oss << "route add 10.2.0.0/16 via " << if5.GetAddress (1, 0) ;
+      cmd_oss << "route add 10.2.0.0/16 via " << if7.GetAddress (1, 0) ;
       LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.1), cmd_oss.str ().c_str ());
       cmd_oss.str ("");
-      cmd_oss << "route add 10.4.0.0/16 via " << if5.GetAddress (1, 0) ;
+      cmd_oss << "route add 10.4.0.0/16 via " << if7.GetAddress (1, 0) ;
+      LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.6.0.0/16 via " << if7.GetAddress (1, 0) ;
       LinuxStackHelper::RunIp (routers.Get (i), Seconds (0.1), cmd_oss.str ().c_str ());
 
       cmd_oss.str ("");
-      cmd_oss << "route add 10.1.0.0/16 via " << if5.GetAddress (0, 0) ;
+      cmd_oss << "route add 10.1.0.0/16 via " << if7.GetAddress (0, 0) ;
       LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
       cmd_oss.str ("");
-      cmd_oss << "route add 10.3.0.0/16 via " << if5.GetAddress (0, 0) ;
+      cmd_oss << "route add 10.3.0.0/16 via " << if7.GetAddress (0, 0) ;
+      LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.5.0.0/16 via " << if7.GetAddress (0, 0) ;
       LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
 
       // Right link
@@ -492,11 +515,14 @@ int main (int argc, char *argv[])
       pointToPoint.SetChannelAttribute ("Delay", StringValue ("1ns"));
       devices2 = pointToPoint.Install (nodes.Get (1), routers2.Get (i));
       devices4 = pointToPoint.Install (nodes.Get (3), routers2.Get (i));
+      devices6 = pointToPoint.Install (nodes.Get (5), routers2.Get (i));
       // Assign ip addresses
       Ipv4InterfaceContainer if2 = address2.Assign (devices2);
       Ipv4InterfaceContainer if4 = address4.Assign (devices4);
+      Ipv4InterfaceContainer if6 = address6.Assign (devices6);
       address2.NewNetwork ();
       address4.NewNetwork ();
+      address6.NewNetwork ();
       // setup ip routes
       cmd_oss.str ("");
       cmd_oss << "rule add from " << if2.GetAddress (0, 0) << " table " << (i+1);
@@ -524,6 +550,19 @@ int main (int argc, char *argv[])
       cmd_oss << "route add 10.4.0.0/16 via " << if4.GetAddress (1, 0) << " dev sim3";
       LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
 
+      cmd_oss.str ("");
+      cmd_oss << "rule add from " << if6.GetAddress (0, 0) << " table " << (i+1);
+      LinuxStackHelper::RunIp (nodes.Get (5), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.6." << i << ".0/24 dev sim" << i << " scope link table " << (i+1);
+      LinuxStackHelper::RunIp (nodes.Get (5), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add default via " << if6.GetAddress (1, 0) << " dev sim" << i << " table " << (i+1);
+      LinuxStackHelper::RunIp (nodes.Get (5), Seconds (0.1), cmd_oss.str ().c_str ());
+      cmd_oss.str ("");
+      cmd_oss << "route add 10.6.0.0/16 via " << if6.GetAddress (1, 0) << " dev sim5";
+      LinuxStackHelper::RunIp (routers2.Get (i), Seconds (0.2), cmd_oss.str ().c_str ());
+
       setPos (routers.Get (i), 30, i * 20, 0);
       setPos (routers2.Get (i), 70, i * 20, 0);
     }
@@ -533,6 +572,8 @@ int main (int argc, char *argv[])
   LinuxStackHelper::RunIp (nodes.Get (1), Seconds (0.1), "route add default via 10.2.0.2 dev sim0");
   LinuxStackHelper::RunIp (nodes.Get (2), Seconds (0.1), "route add default via 10.3.0.2 dev sim0");
   LinuxStackHelper::RunIp (nodes.Get (3), Seconds (0.1), "route add default via 10.4.0.2 dev sim0");
+  LinuxStackHelper::RunIp (nodes.Get (4), Seconds (0.1), "route add default via 10.5.0.2 dev sim0");
+  LinuxStackHelper::RunIp (nodes.Get (5), Seconds (0.1), "route add default via 10.6.0.2 dev sim0");
   LinuxStackHelper::RunIp (nodes.Get (0), Seconds (0.1), "rule show");
 
   // Schedule Up/Down (XXX: didn't work...)
@@ -573,6 +614,8 @@ int main (int argc, char *argv[])
   dce.SetBinary ("iperf");
   dce.ResetArguments ();
   dce.ResetEnvironment ();
+  dce.AddArgument ("-i");
+  dce.AddArgument ("1");
   dce.AddArgument ("-s");
   dce.AddArgument ("-P");
   dce.AddArgument ("1");
@@ -583,22 +626,33 @@ int main (int argc, char *argv[])
 
   //apps.Start (Seconds (4));
 
-  multimap<int, string> adrs_set, adrs_set2;
+  multimap<int, string> adrs_set, adrs_set2, adrs_set3;
   adrs_set.insert(map<int, string>::value_type(0, "10.2.0.1"));
   adrs_set2.insert(map<int, string>::value_type(2, "10.4.0.1"));
+  adrs_set3.insert(map<int, string>::value_type(4, "10.6.0.1"));
   //show_multimap(adrs_set);
   int poisson_size, constant_size;
-  //int *poisson_set = poisson_pros(5000, 9000, 5, &poisson_size);
+  int *poisson_set = poisson_pros(5000, 7000, 20, &poisson_size);
   int *constant_set = constant_pros(5000, 7000, 20, &constant_size);
+  /*
   for(int i=0; i<constant_size;i++){
     socketTraffic(adrs_set2, s_size, (double) constant_set[i] / 1000, end, nodes);
   }
-  socketTraffic(adrs_set, 0, 4.0, end, nodes);
+  *?
+  /*
+  for(int i=0; i<poisson_size;i++){
+    socketTraffic(adrs_set2, s_size, (double) poisson_set[i] / 1000, end, nodes);
+  }
+  */
+  //socketTraffic(adrs_set, 0, 4.0, end, nodes); 
+  socketTraffic(adrs_set3, 0, 4.0, end, nodes);
   
-  setPos (nodes.Get (0), 0, 20 * (nRtrs - 1) / 2 + 10, 0);
-  setPos (nodes.Get (1), 100, 20 * (nRtrs - 1) / 2 + 10, 0);
-  setPos (nodes.Get (2), 0, 20 * (nRtrs - 1) / 2 - 10, 0);
-  setPos (nodes.Get (3), 100, 20 * (nRtrs - 1) / 2 - 10, 0);
+  setPos (nodes.Get (0), 0, 20 * (nRtrs - 1) / 2 + 20, 0);
+  setPos (nodes.Get (1), 100, 20 * (nRtrs - 1) / 2 + 20, 0);
+  setPos (nodes.Get (2), 0, 20 * (nRtrs - 1) / 2 , 0);
+  setPos (nodes.Get (3), 100, 20 * (nRtrs - 1) / 2 , 0);
+  setPos (nodes.Get (4), 0, 20 * (nRtrs - 1) / 2 - 20, 0);
+  setPos (nodes.Get (5), 100, 20 * (nRtrs - 1) / 2 - 20, 0);
 
   Simulator::Stop (Seconds (end));
   AnimationInterface anim("./xml/dce-iperf-mptcp_expe.xml");
