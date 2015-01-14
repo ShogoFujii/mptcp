@@ -187,6 +187,7 @@ struct sock_common {
 	int lane_child;
 	uint32_t time_limit;
 	uint32_t time_limit_stamp;
+	uint32_t is_sub;
 	int path_cost;
 	int path_state;
 	int is_path;

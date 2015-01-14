@@ -628,24 +628,27 @@ int main (int argc, char *argv[])
 
   multimap<int, string> adrs_set, adrs_set2, adrs_set3;
   adrs_set.insert(map<int, string>::value_type(0, "10.2.0.1"));
-  adrs_set2.insert(map<int, string>::value_type(2, "10.4.0.1"));
-  adrs_set3.insert(map<int, string>::value_type(4, "10.6.0.1"));
+  adrs_set2.insert(map<int, string>::value_type(2, "10.2.0.1"));
+  adrs_set3.insert(map<int, string>::value_type(4, "10.2.0.1"));
   //show_multimap(adrs_set);
   int poisson_size, constant_size;
   int *poisson_set = poisson_pros(5000, 7000, 20, &poisson_size);
   int *constant_set = constant_pros(5000, 7000, 20, &constant_size);
-  /*
+  
   for(int i=0; i<constant_size;i++){
+    socketTraffic(adrs_set, s_size, (double) constant_set[i] / 1000, end, nodes);
     socketTraffic(adrs_set2, s_size, (double) constant_set[i] / 1000, end, nodes);
+    socketTraffic(adrs_set3, s_size, (double) constant_set[i] / 1000, end, nodes);
   }
-  *?
+  
+  //socketTraffic(adrs_set, s_size, 6.0, end, nodes);
   /*
   for(int i=0; i<poisson_size;i++){
     socketTraffic(adrs_set2, s_size, (double) poisson_set[i] / 1000, end, nodes);
   }
   */
   //socketTraffic(adrs_set, 0, 4.0, end, nodes); 
-  socketTraffic(adrs_set3, 0, 4.0, end, nodes);
+  //socketTraffic(adrs_set3, 0, 4.0, end, nodes);
   
   setPos (nodes.Get (0), 0, 20 * (nRtrs - 1) / 2 + 20, 0);
   setPos (nodes.Get (1), 100, 20 * (nRtrs - 1) / 2 + 20, 0);

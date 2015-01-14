@@ -46,6 +46,7 @@
 int sysctl_tcp_max_ssthresh = 0;
 //int judge_cnt=0, thresh=-1;
 int d_cnt=0;
+int add_cnt=0;
 
 struct remaddr_info {
 	struct mptcp_loc4 locaddr4[MPTCP_MAX_ADDR];
@@ -60,6 +61,11 @@ struct mptcp_loc_addr {
 	struct mptcp_loc6 locaddr6[MPTCP_MAX_ADDR];
 	u8 loc6_bits;
 	u8 next_v6_index;
+};
+
+struct locaddr_list {
+	struct mptcp_loc_addr *loc_addr;
+	u8 remain_num;
 };
 
 u32 mptcp_v4_get_nonce(__be32 saddr, __be32 daddr, __be16 sport, __be16 dport,
@@ -355,13 +361,35 @@ int mptcp_v4_add_raddress(struct mptcp_cb *mpcb, const struct in_addr *addr,
 	//if(addr->s_addr == 16908554 || addr->s_addr == 16908810)
 	//	printf("hitttttttttt!!!%d\n\n", addr->s_addr);
 	struct remaddr_info rem_info = get_remaddr_info();
-	
-	if(rem_info.remain_num){
-		int tar_num = rem_info.remain_num-1;
-		printf("hitttttttttt!!!%d:%d, %d:%d\n\n", addr->s_addr, rem4->lane_child, rem_info.locaddr4[tar_num].addr.s_addr, rem_info.locaddr4[tar_num].lane_child);
+	struct locaddr_list loc_info = get_locaddr_list();
+	//printf("loc_list:%d\n", loc_info.loc_addr->locaddr4[1].addr.s_addr);
+	//printf("loc_list:%d\n", loc_info.loc_addr->locaddr4[2].addr.s_addr);
+	//printf("loc_list:%d\n", loc_info.loc_addr->locaddr4[3].addr.s_addr);	
+	//printf("[debug]i:%d\n", i);
+	struct tcp_sock *tp = tcp_sk(mpcb->meta_sk);
+	/*
+	if(i>1){
+		if(mpcb->meta_sk->__sk_common.is_sub)
+			printf("This is long_flow:%d, state:%s, %d\n", i, tp->tsq_flags, addr->s_addr);
+		else{
+			printf("This is short_flow:%d, state:%d, %d\n", i,  mpcb->meta_sk->__sk_common.skc_state, addr->s_addr);	
+		}
 		struct sock *meta_sk = mpcb->meta_sk;
-		mptcp_init4_subsockets(meta_sk, &rem_info.locaddr4[tar_num], rem4);
+		printf("hitttttttttt!!!%d, %d\n\n", addr->s_addr, loc_info.loc_addr->locaddr4[loc_info.remain_num].addr.s_addr);
+		if(addr->s_addr == 16909066){
+			printf("hit!%d, %d\n\n", rem4->addr.s_addr, loc_info.loc_addr->locaddr4[loc_info.remain_num].addr.s_addr);
+			mptcp_init4_subsockets(meta_sk, &loc_info.loc_addr->locaddr4[loc_info.remain_num], rem4);
+			mptcp_init4_subsockets(meta_sk, &loc_info.loc_addr->locaddr4[loc_info.remain_num-1], &mpcb->remaddr4[i-1]);
+		}
+	}
+	*/
+	if(rem_info.remain_num != 0){
+		int tar_num = rem_info.remain_num-1;
+		printf("hitttttttttt!!!%d:%d, %d:%d\n\n", addr->s_addr, rem4->lane_child, rem_info.locaddr4[add_cnt].addr.s_addr, rem_info.locaddr4[add_cnt].lane_child);
+		struct sock *meta_sk = mpcb->meta_sk;
+		mptcp_init4_subsockets(meta_sk, &rem_info.locaddr4[add_cnt], rem4);
 		rem4->retry_bitfield &= ~(1 << tar_num);
+		add_cnt++;
 		//rem_info.locaddr4[0].addr.s_addr
 	//	if (mptcp_init4_subsockets(meta_sk, &rem_info.loc_addr[rem_info.remain_num], rem4) == -ENETUNREACH)
 	}

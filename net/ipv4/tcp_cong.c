@@ -388,7 +388,7 @@ void mptcp_cost_calc(struct sock *sk)
 	int alpha=1;
 	int beta=1;
 	int delta=1;
-	int gamma=10;
+	int gamma=15;
 	/* updating base_rtt */
 	if(sk->__sk_common.base_rtt == 0 ||sk->__sk_common.base_rtt > tp->srtt){
 		sk->__sk_common.base_rtt=tp->srtt;
@@ -407,15 +407,19 @@ void mptcp_cost_calc(struct sock *sk)
 		thre_cost=0;
 	}
 	cost = alpha * nu_rtt + delta * thre_cost;
-	//printf("[debug]cost:%d, ", cost);
+	printf("[debug:%d]cost:%d, %d", sk->__sk_common.skc_daddr, sk->__sk_common.path_cost, sk->__sk_common.base_cost);
 	if (sk->__sk_common.base_cost == 0 || cost < sk->__sk_common.base_cost){
 		if(cost < 0)
 			cost = alpha * nu_rtt;
 		sk->__sk_common.base_cost = cost;
 	}
-	if (sk->__sk_common.base_cost == 0)
-		sk->__sk_common.base_cost = 100;
-	sk->__sk_common.path_cost = sk->__sk_common.base_cost * (1 + alpha * nu_rtt) + gamma * thre_cost;
+	if (sk->__sk_common.base_cost < 1){
+		sk->__sk_common.base_cost = 1;
+		sk->__sk_common.path_cost = sk->__sk_common.base_cost * (1 + alpha * nu_rtt) + gamma * thre_cost;
+		sk->__sk_common.base_cost = sk->__sk_common.path_cost;
+	}else{
+		sk->__sk_common.path_cost = sk->__sk_common.base_cost * (1 + alpha * nu_rtt) + gamma * thre_cost;
+	}
 	
 	//printf("now:%d, now2:%d\n", tcp_time_stamp, jiffies_to_msecs(get_jiffies_64()));
 	
@@ -438,7 +442,7 @@ void mptcp_cost_calc(struct sock *sk)
 	}
 	printf("\n");
 	if(lane_tmp == 1 && sk->__sk_common.is_path != 1){
-		printf("change!!!!!!!!!!!!\n\n\n\n");
+		cost_state_change(*sk);
 		mptcp_for_each_sk(mpcb, sub_sk) {
 			sub_sk->__sk_common.is_path=1;
 			if(sub_sk->__sk_common.lane_info == 1){
@@ -451,6 +455,12 @@ void mptcp_cost_calc(struct sock *sk)
 		printf("[cost_calc]lane:%d, is_path:%d, %d, %d\n", sk->__sk_common.lane_info, sk->__sk_common.is_path, sk->__sk_common.skc_daddr, sk->__sk_common.skc_rcv_saddr);
 	}
 }
+
+void cost_state_change(struct sock *sk)
+{
+	printf("[%d]change!!!!!!!!!!!!\n\n\n\n", jiffies_to_msecs(get_jiffies_64()));
+}
+
 
 void mptcp_judge_limit(struct sock *sk)
 {

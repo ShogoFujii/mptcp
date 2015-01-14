@@ -698,6 +698,7 @@ extern spinlock_t mptcp_tk_hashlock;	/* hashtable protection */
 
 void create_subflow_worker2(struct work_struct *work);
 struct remaddr_info get_remaddr_info(void);
+struct locaddr_list get_locaddr_list(void);
 void mptcp_data_ready(struct sock *sk, int bytes);
 void mptcp_write_space(struct sock *sk);
 

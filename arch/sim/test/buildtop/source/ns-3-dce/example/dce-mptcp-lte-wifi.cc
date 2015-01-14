@@ -336,6 +336,7 @@ int main (int argc, char *argv[])
   outputConfig2.ConfigureAttributes ();
 
   Simulator::Stop (Seconds (stopTime));
+  AnimationInterface anim("./xml/dce-mptcp-lte.xml");
   Simulator::Run ();
   Simulator::Destroy ();
 

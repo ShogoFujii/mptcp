@@ -19,6 +19,12 @@ struct remaddr_info {
 };
 struct remaddr_info rem_info;
 
+struct locaddr_list {
+	struct mptcp_loc_addr *loc_addr;
+	u8 remain_num;
+};
+struct locaddr_list loc_list;
+
 enum {
 	MPTCP_EVENT_ADD = 1,
 	MPTCP_EVENT_DEL,
@@ -74,6 +80,20 @@ struct remaddr_info get_remaddr_info(void)
 	return rem_info;
 }
 
+void store_local_list(struct mptcp_loc_addr *mptcp_loc)
+{
+	if(mptcp_loc){
+		loc_list.loc_addr = mptcp_loc;
+		loc_list.remain_num++;
+		//printf("loc_list:%d\n", loc_list.remain_num);
+	}
+}
+
+struct locaddr_list get_locaddr_list(void)
+{
+	return loc_list;
+}
+
 void store_remaddr_info(struct mptcp_loc4 loc4)
 {
 	if(loc4.addr.s_addr){
@@ -81,6 +101,7 @@ void store_remaddr_info(struct mptcp_loc4 loc4)
 		rem_info.remain_num++;
 	}
 }
+
 static struct mptcp_fm_ns *fm_get_ns(struct net *net)
 {
 	return (struct mptcp_fm_ns *)net->mptcp.path_managers[MPTCP_PM_FULLMESH];
@@ -227,6 +248,8 @@ static void create_subflow_worker(struct work_struct *work)
 	int iter = 0, retry = 0;
 	int i;
 
+	meta_sk->__sk_common.is_sub=1;
+
 	/* We need a local (stable) copy of the address-list. Really, it is not
 	 * such a big deal, if the address-list is not 100% up-to-date.
 	 */
@@ -288,7 +311,7 @@ next_subflow:
 				goto next_subflow;
 			}
 			if(rem->addr.s_addr == 0 || mptcp_local->locaddr4[i].addr.s_addr == 0){
-				rem = &mpcb->remaddr4[1];	/*to remove */
+				rem = &mpcb->remaddr4[2];	/*to remove */
 				printf("no_address_stored!!!!!!!i:%d\n", i);
 				store_remaddr_info(mptcp_local->locaddr4[i]);
 				goto next_subflow;
@@ -636,6 +659,7 @@ next_event:
 			mptcp_local->locaddr4[i].id = i;
 			mptcp_local->locaddr4[i].low_prio = event->low_prio;
 			mptcp_init_lane_set(mptcp_local->locaddr4, i);
+			store_local_list(mptcp_local);
 		} else {
 			mptcp_local->locaddr6[i].addr = event->u.addr6;
 			mptcp_local->locaddr6[i].id = i + MPTCP_MAX_ADDR;
